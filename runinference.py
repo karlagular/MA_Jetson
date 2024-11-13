@@ -28,8 +28,8 @@ class VideoProcessor:
             "videoconvert ! "
             "video/x-raw, format=BGR ! appsink"
         )
-        self.stream = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        # self.stream = cv2.VideoCapture(1) # WEBCAM WORKIN!
+        # self.stream = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        self.stream = cv2.VideoCapture(0) # WEBCAM WORKIN!
         
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
@@ -102,10 +102,17 @@ class YOLOProcessor(VideoProcessor):
             camera_id: Camera device ID
         """
         super().__init__(camera_id)
+        # Check for CUDA device and set it
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f'Using device: {device}')
+        
         self.model = YOLO(model_path)
+        print("Class names recognized by the model:")
+        for class_id, class_name in self.model.names.items():
+            print(f"{class_id}: {class_name}")
         
         # Configuration
-        self.conf_threshold = 0.5
+        self.conf_threshold = 0.6
         self.colors = np.random.randint(0, 255, size=(100, 3)).tolist()
     
     @staticmethod
@@ -206,22 +213,6 @@ class YOLOProcessor(VideoProcessor):
         
         return processed_frame
 
-def create_gui(processor):
-    def switch_model(model_path):
-        processor.change_model(model_path)
-
-    root = tk.Tk()
-    root.title("Model Selector")
-
-    # Buttons for different models
-    models = ['yolov8n-seg.pt', 'yolov8s-seg.pt', 'yolov8m-seg.pt']
-    for model in models:
-        btn = tk.Button(root, text=f"Load {model}", command=partial(switch_model, model))
-        btn.pack()
-
-    # Run the main loop
-    root.mainloop()
-
 if __name__ == "__main__":
     # Initialize and run the YOLO processor
     # You can use different models like:
@@ -230,6 +221,7 @@ if __name__ == "__main__":
     # - 'yolov8m-seg.pt' (medium)
     # - 'yolov8l-seg.pt' (large)
     # - 'yolov8x-seg.pt' (extra large)
-    processor = YOLOProcessor('YOLO11n-seg-ret.pt')
-    create_gui(processor)
+    processor = YOLOProcessor('yolov8n-seg.pt')
+    # create_gui(processor)
     processor.run()
+
