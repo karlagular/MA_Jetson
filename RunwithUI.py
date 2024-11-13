@@ -77,7 +77,7 @@ class VideoApp(QMainWindow):
         self.layout.setSpacing(10)
 
         # Headline label
-        self.headline_label = QLabel("Video Processing Interface")
+        self.headline_label = QLabel("Synthetic Inference")
         self.headline_label.setStyleSheet(
             "font-size: 22px; font-weight: bold; text-align: center; color: #FFFFFF;"
         )
@@ -133,12 +133,13 @@ class VideoApp(QMainWindow):
         self.central_widget.setLayout(self.layout)
 
         # Set window properties
-        self.setWindowTitle("Video Processing App")
-        self.setFixedSize(800, 600)
+        # self.setWindowTitle("Video Processing App")
+        self.setFixedSize(800, 480)
         self.setStyleSheet(
             "QMainWindow { background-color: #1C1C1C; } "
             "QWidget { background-color: #1C1C1C; color: #FFFFFF; } "
         )
+        #self.showFullScreen()
 
     def update_frame(self):
         ret, frame = self.video_processor.read_frame()
