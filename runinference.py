@@ -3,6 +3,8 @@ import numpy as np
 from typing import Optional, Tuple
 from ultralytics import YOLO
 import torch
+import tkinter as tk
+from functools import partial
 
 class VideoProcessor:
     def __init__(self, camera_id: int = 0, width: int = 640, height: int = 640):
@@ -18,7 +20,17 @@ class VideoProcessor:
         Returns:
             bool: True if stream opened successfully
         """
-        self.stream = cv2.VideoCapture(self.camera_id)
+        pipeline = (
+            "nvarguscamerasrc ! "
+            "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1, format=NV12 ! "
+            "nvvidconv flip-method=0 ! "
+            "video/x-raw, width=640, height=480, format=BGRx ! "
+            "videoconvert ! "
+            "video/x-raw, format=BGR ! appsink"
+        )
+        self.stream = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        # self.stream = cv2.VideoCapture(1) # WEBCAM WORKIN!
+        
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         return self.stream.isOpened()
@@ -146,7 +158,7 @@ class YOLOProcessor(VideoProcessor):
                 color = self.colors[cls % len(self.colors)]
                 
                 # Draw segmentation mask
-                mask_array = mask.data[0].numpy()
+                mask_array = mask.data[0].cpu().numpy()
                 processed_frame = self.draw_mask(
                     processed_frame,
                     mask_array,
@@ -194,6 +206,22 @@ class YOLOProcessor(VideoProcessor):
         
         return processed_frame
 
+def create_gui(processor):
+    def switch_model(model_path):
+        processor.change_model(model_path)
+
+    root = tk.Tk()
+    root.title("Model Selector")
+
+    # Buttons for different models
+    models = ['yolov8n-seg.pt', 'yolov8s-seg.pt', 'yolov8m-seg.pt']
+    for model in models:
+        btn = tk.Button(root, text=f"Load {model}", command=partial(switch_model, model))
+        btn.pack()
+
+    # Run the main loop
+    root.mainloop()
+
 if __name__ == "__main__":
     # Initialize and run the YOLO processor
     # You can use different models like:
@@ -203,4 +231,5 @@ if __name__ == "__main__":
     # - 'yolov8l-seg.pt' (large)
     # - 'yolov8x-seg.pt' (extra large)
     processor = YOLOProcessor('YOLO11n-seg-ret.pt')
+    create_gui(processor)
     processor.run()
