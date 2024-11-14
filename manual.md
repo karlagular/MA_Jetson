@@ -104,4 +104,60 @@ results = model("https://ultralytics.com/images/bus.jpg")
 pip3 install pyqt5 --config-settings --confirm-license= --verbose
 ```
 
-## Done!
+## First Steps Done!
+
+## Detailed Steps for Migration:
+
+```bash
+sudo apt-get install nano
+```
+
+Install to SD, follow guide to copy, go into folder in SSD change extlinux.conf, download gpartet, unmount SSD, make partition bigger, shutdown, remove SD and be Happy
+
+### Clone the SD Card to the SSD
+Use `dd` or `rsync` as outlined before to clone your SD card. Since Jetson devices may have boot partitions that require special handling, a sector-by-sector copy (`dd`) is generally preferable:
+
+```bash
+sudo dd if=/dev/mmcblk0 of=/dev/nvme0n1 bs=4M status=progress
+```
+
+### Verify and Adjust Partition Layout
+After cloning, check the partition structure using `lsblk` or `fdisk`:
+
+```bash
+sudo fdisk -l /dev/nvme0n1
+```
+
+Ensure that the boot and root partitions were copied successfully. If you need to expand the root partition to utilize the entire space of the SSD, use `gparted` or `parted` as described earlier.
+
+### Update the Bootloader Configuration
+The Jetson Orin Nano might need boot configuration adjustments:
+
+1. Check for the `extlinux.conf` file, typically found under `/boot/extlinux/extlinux.conf`.
+2. Update the `root` parameter in `extlinux.conf` to point to your SSD. Replace `/dev/mmcblk0p1` or similar references with `/dev/nvme0n1p1` (or the specific partition identifier of the root partition on the SSD).
+
+```bash
+sudo nano /boot/extlinux/extlinux.conf
+```
+
+Ensure that the `APPEND` line references the correct device:
+
+```text
+APPEND ... root=/dev/nvme0n1p1 ...
+```
+
+## install geparted and go into GUI
+
+```bash
+sudo apt-get install gparted
+sudo gparted
+```
+
+## shutdown 
+After shutdown remove sd and reboot
+
+```bash
+sudo shutdown
+```
+
+
