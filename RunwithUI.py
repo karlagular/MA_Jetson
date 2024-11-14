@@ -89,7 +89,6 @@ class VideoApp(QMainWindow):
         self.video_label.setStyleSheet(
             "border-radius: 8px; border: 1px solid #444; background-color: #1E1E1E;"
         )
-        self.video_label.setFixedSize(780, 440)
         self.layout.addWidget(self.video_label)
 
         # Button layout
@@ -112,20 +111,26 @@ class VideoApp(QMainWindow):
         )
 
         # Buttons
-        self.button1 = QPushButton("Action 1")
+        self.button1 = QPushButton("Model 1")
         self.button1.setStyleSheet(button_style)
         self.button1.clicked.connect(self.button1_action)
         self.button_layout.addWidget(self.button1)
 
-        self.button2 = QPushButton("Action 2")
+        self.button2 = QPushButton("Model 2")
         self.button2.setStyleSheet(button_style)
         self.button2.clicked.connect(self.button2_action)
         self.button_layout.addWidget(self.button2)
 
-        self.button3 = QPushButton("Action 3")
+        self.button3 = QPushButton("Model 3")
         self.button3.setStyleSheet(button_style)
         self.button3.clicked.connect(self.button3_action)
         self.button_layout.addWidget(self.button3)
+
+        # Fourth button for toggling fullscreen
+        self.fullscreen_button = QPushButton("Toggle Fullscreen")
+        self.fullscreen_button.setStyleSheet(button_style)
+        self.fullscreen_button.clicked.connect(self.toggle_fullscreen)
+        self.button_layout.addWidget(self.fullscreen_button)
 
         self.layout.addLayout(self.button_layout)
 
@@ -133,13 +138,21 @@ class VideoApp(QMainWindow):
         self.central_widget.setLayout(self.layout)
 
         # Set window properties
-        # self.setWindowTitle("Video Processing App")
-        self.setFixedSize(800, 480)
+        self.setWindowTitle("Video Processing App")
         self.setStyleSheet(
             "QMainWindow { background-color: #1C1C1C; } "
             "QWidget { background-color: #1C1C1C; color: #FFFFFF; } "
         )
-        #self.showFullScreen()
+        self.setMinimumSize(400, 300)  # Make window resizable
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Get the available size for the video frame
+        available_width = self.central_widget.width() - 20
+        available_height = self.central_widget.height() - 100
+        
+        # Set the size of the video label to match the available space
+        self.video_label.setFixedSize(available_width, available_height)
 
     def update_frame(self):
         ret, frame = self.video_processor.read_frame()
@@ -151,26 +164,44 @@ class VideoApp(QMainWindow):
             print("Error: Failed to read frame")
 
     def display_frame(self, frame):
-        # Convert the frame to a format suitable for Qt
-        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Get the aspect ratio of the video
+        frame_height, frame_width = frame.shape[:2]
+        window_width = self.video_label.width()
+        window_height = self.video_label.height()
+        
+        # Resize the frame to fill the entire label (stretching)
+        stretched_frame = cv2.resize(frame, (window_width, window_height))
+
+        # Convert the stretched frame to RGB
+        rgb_image = cv2.cvtColor(stretched_frame, cv2.COLOR_BGR2RGB)
         height, width, channel = rgb_image.shape
         bytes_per_line = channel * width
         q_image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
 
-        # Display the image on the label
-        self.video_label.setPixmap(QPixmap.fromImage(q_image))
+        # Create a QPixmap from the image
+        pixmap = QPixmap.fromImage(q_image)
+
+        # Set the pixmap to the video label
+        self.video_label.setPixmap(pixmap)
+        self.video_label.setAlignment(Qt.AlignCenter)
+    
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def button1_action(self):
         print("Action 1 triggered")
-        # Placeholder function
+        YOLOProcessor.change_model(processor, "YOLO11n-seg-ret.pt")
 
     def button2_action(self):
         print("Action 2 triggered")
-        # Placeholder function
+        YOLOProcessor.change_model(processor, "yolo11n-seg.pt")
 
     def button3_action(self):
         print("Action 3 triggered")
-        # Placeholder function
+        YOLOProcessor.change_model(processor, "yolov8n-seg.pt")
 
     def closeEvent(self, event):
         # Stop the video capture and close windows when the app is closed
@@ -196,19 +227,29 @@ class YOLOProcessor(VideoProcessor):
         self.conf_threshold = 0.5
         self.colors = np.random.randint(0, 255, size=(100, 3)).tolist()
     
+    def change_model(self, new_model_path: str):
+            """Change the YOLO model and restart the video stream."""
+            # Close the current stream
+            self.close_stream()
+            
+            # Load the new model
+            self.model = YOLO(new_model_path)
+            
+            # Restart the video stream
+            if not self.open_stream():
+                print("Error: Could not reopen video stream after changing model.")
+            
+            print(f'Model changed to: {new_model_path}')
+
     @staticmethod
     def draw_mask(img: np.ndarray, mask: np.ndarray, color: Tuple[int, int, int], alpha: float = 0.5) -> np.ndarray:
-        """
-        Draw segmentation mask on image.
-        Args:
-            img: Original image
-            mask: Binary mask
-            color: RGB color for the mask
-            alpha: Transparency value (0-1)
-        Returns:
-            np.ndarray: Image with mask overlay
-        """
+        """ Draw segmentation mask on image. """
         overlay = img.copy()
+        
+        # Resize mask to match image dimensions
+        if mask.shape[:2] != img.shape[:2]:
+            mask = cv2.resize(mask, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
+
         mask = mask.astype(bool)
         overlay[mask] = color
         return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
