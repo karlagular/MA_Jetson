@@ -1,3 +1,6 @@
+The numpy version in this readme is not compatible. Newer is required (?.0).
+The 6.? JetPack Version uses cuDNN 9 instead of 8. 
+
 # Comments and Text written by ChatGPT, I felt Lazy.
 
 # Jetson Nano/Orin Jetpack 6.0 Setup Guide
