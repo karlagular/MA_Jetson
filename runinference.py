@@ -7,8 +7,8 @@ import tkinter as tk
 from functools import partial
 
 class VideoProcessor:
-    def __init__(self, camera_id: int = 0, width: int = 640, height: int = 640):
-        """Initialize the video processor with a camera ID."""
+    def __init__(self, camera_id = 0, width: int = 640, height: int = 640):
+        """Initialize the video processor with a camera ID (int) or GStreamer/RTSP pipeline (str)."""
         self.camera_id = camera_id
         self.width = width
         self.height = height
@@ -20,19 +20,14 @@ class VideoProcessor:
         Returns:
             bool: True if stream opened successfully
         """
-        pipeline = (
-            "nvarguscamerasrc ! "
-            "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1, format=NV12 ! "
-            "nvvidconv flip-method=0 ! "
-            "video/x-raw, width=640, height=480, format=BGRx ! "
-            "videoconvert ! "
-            "video/x-raw, format=BGR ! appsink"
-        )
-        # self.stream = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        self.stream = cv2.VideoCapture(0) # WEBCAM WORKIN!
-        
-        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        if isinstance(self.camera_id, str):
+            # RTSP or GStreamer pipeline string
+            self.stream = cv2.VideoCapture(self.camera_id, cv2.CAP_GSTREAMER)
+        else:
+            # Integer device ID (USB webcam / CSI)
+            self.stream = cv2.VideoCapture(self.camera_id)
+            self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         return self.stream.isOpened()
     
     def read_frame(self) -> Tuple[bool, Optional[np.ndarray]]:
@@ -128,6 +123,9 @@ class YOLOProcessor(VideoProcessor):
             np.ndarray: Image with mask overlay
         """
         overlay = img.copy()
+        # Resize mask to match image dimensions if needed
+        if mask.shape[:2] != img.shape[:2]:
+            mask = cv2.resize(mask, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
         mask = mask.astype(bool)
         overlay[mask] = color
         return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
@@ -214,14 +212,19 @@ class YOLOProcessor(VideoProcessor):
         return processed_frame
 
 if __name__ == "__main__":
-    # Initialize and run the YOLO processor
-    # You can use different models like:
-    # - 'yolov8n-seg.pt' (nano)
-    # - 'yolov8s-seg.pt' (small)
-    # - 'yolov8m-seg.pt' (medium)
-    # - 'yolov8l-seg.pt' (large)
-    # - 'yolov8x-seg.pt' (extra large)
-    processor = YOLOProcessor('yolov8n-seg.pt')
-    # create_gui(processor)
+    # --- Source selection ---
+    # USB webcam:  camera_id = 0
+    # CSI camera:  camera_id = "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1,format=NV12 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
+    # RTSP stream: camera_id = rtsp_pipeline (below)
+
+    RTSP_URL = "rtsp://192.168.178.75:8554/cam"
+    rtsp_pipeline = (
+        f"rtspsrc location={RTSP_URL} latency=200 ! "
+        "rtph264depay ! h264parse ! nvv4l2decoder ! "
+        "nvvidconv ! video/x-raw,format=BGRx ! "
+        "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
+    )
+
+    processor = YOLOProcessor('yolov8n-seg.pt', camera_id=rtsp_pipeline)
     processor.run()
 

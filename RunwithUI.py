@@ -9,8 +9,8 @@ from ultralytics import YOLO
 import torch
 
 class VideoProcessor:
-    def __init__(self, camera_id: int = 0, width: int = 640, height: int = 480):
-        """Initialize the video processor with a camera ID."""
+    def __init__(self, camera_id = 0, width: int = 640, height: int = 480):
+        """Initialize the video processor with a camera ID (int) or GStreamer/RTSP pipeline (str)."""
         self.camera_id = camera_id
         self.width = width
         self.height = height
@@ -19,18 +19,14 @@ class VideoProcessor:
     def open_stream(self) -> bool:
         """Open video stream. Returns True if stream opened successfully."""
         
-        pipeline = (
-            "nvarguscamerasrc ! "
-            "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1, format=NV12 ! "
-            "nvvidconv flip-method=0 ! "
-            "video/x-raw, width=640, height=480, format=BGRx ! "
-            "videoconvert ! "
-            "video/x-raw, format=BGR ! appsink"
-            )
-        
-        self.stream = cv2.VideoCapture(self.camera_id)
-        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        if isinstance(self.camera_id, str):
+            # RTSP or GStreamer pipeline string
+            self.stream = cv2.VideoCapture(self.camera_id, cv2.CAP_GSTREAMER)
+        else:
+            # Integer device ID (USB webcam / CSI)
+            self.stream = cv2.VideoCapture(self.camera_id)
+            self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         return self.stream.isOpened()
 
     def read_frame(self):
@@ -228,18 +224,11 @@ class YOLOProcessor(VideoProcessor):
         self.colors = np.random.randint(0, 255, size=(100, 3)).tolist()
     
     def change_model(self, new_model_path: str):
-            """Change the YOLO model and restart the video stream."""
-            # Close the current stream
-            self.close_stream()
-            
-            # Load the new model
-            self.model = YOLO(new_model_path)
-            
-            # Restart the video stream
-            if not self.open_stream():
-                print("Error: Could not reopen video stream after changing model.")
-            
-            print(f'Model changed to: {new_model_path}')
+        """Change the YOLO model without restarting the video stream."""
+        print(f"Switching model to: {new_model_path}")
+        self.model = YOLO(new_model_path)
+        self.model.to(self.device)
+        print(f"Model changed to: {new_model_path}")
 
     @staticmethod
     def draw_mask(img: np.ndarray, mask: np.ndarray, color: Tuple[int, int, int], alpha: float = 0.5) -> np.ndarray:
@@ -336,8 +325,21 @@ class YOLOProcessor(VideoProcessor):
         return processed_frame
 
 if __name__ == "__main__":
+    # --- Source selection ---
+    # USB webcam:  camera_id = 0
+    # CSI camera:  camera_id = "nvarguscamerasrc ! ..."
+    # RTSP stream: camera_id = rtsp_pipeline (below)
+
+    RTSP_URL = "rtsp://192.168.178.75:8554/cam"
+    rtsp_pipeline = (
+        f"rtspsrc location={RTSP_URL} latency=200 ! "
+        "rtph264depay ! h264parse ! nvv4l2decoder ! "
+        "nvvidconv ! video/x-raw,format=BGRx ! "
+        "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
+    )
+
     app = QApplication(sys.argv)
-    processor = YOLOProcessor('yolo11n-seg.pt')
+    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)
     video_app = VideoApp(processor)
     video_app.show()
     sys.exit(app.exec_())
