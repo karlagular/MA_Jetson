@@ -339,7 +339,8 @@ if __name__ == "__main__":
     )
 
     app = QApplication(sys.argv)
-    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)
+    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
+    # processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
     video_app = VideoApp(processor)
     video_app.show()
     sys.exit(app.exec_())
