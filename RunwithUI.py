@@ -1,7 +1,15 @@
 import sys
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QHBoxLayout
+import os
+import json
+import time
+import threading
+from datetime import datetime
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QDialog, QLabel, QPushButton,
+    QVBoxLayout, QHBoxLayout, QGridLayout, QWidget, QComboBox, QCheckBox
+)
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt
 from typing import Optional, Tuple
@@ -48,13 +56,237 @@ class VideoProcessor:
             self.stream.release()
         cv2.destroyAllWindows()
 
+class LatencyTracker:
+    def __init__(self, window_size: int = 60, session_id: str = None):
+        self._records = []  # list of (frame_idx, capture_ms, inference_ms, display_ms, total_ms)
+        self._frame_index = 0
+        self._lock = threading.Lock()
+        self._window_size = window_size
+        self._session_timestamp = session_id if session_id else datetime.now().strftime("%Y%m%d_%H%M%S")
+        self._stop_event = threading.Event()
+        self._print_thread = threading.Thread(target=self._print_loop, daemon=True)
+        self._print_thread.start()
+
+    def record(self, t_capture_ms, t_inference_ms, t_display_ms, t_total_ms):
+        entry = (self._frame_index, t_capture_ms, t_inference_ms, t_display_ms, t_total_ms)
+        with self._lock:
+            self._records.append(entry)
+        self._frame_index += 1
+
+    def _print_loop(self):
+        while not self._stop_event.wait(timeout=1.0):
+            self._print_stats()
+
+    def _print_stats(self):
+        with self._lock:
+            snapshot = self._records[-self._window_size:]
+        if not snapshot:
+            return
+        n = len(snapshot)
+        captures   = [r[1] for r in snapshot]
+        inferences = [r[2] for r in snapshot]
+        displays   = [r[3] for r in snapshot]
+        totals     = [r[4] for r in snapshot]
+
+        def stats(vals):
+            arr = np.array(vals)
+            return f"min={arr.min():.1f} mean={arr.mean():.1f} p99={np.percentile(arr, 99):.1f} max={arr.max():.1f} ms"
+
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(
+            f"[Latency {ts}] N={n} | "
+            f"capture: {stats(captures)} | "
+            f"inference: {stats(inferences)} | "
+            f"display: {stats(displays)} | "
+            f"total: {stats(totals)}"
+        )
+
+    def stop(self):
+        self._stop_event.set()
+        self._print_thread.join(timeout=2.0)
+
+    def save_log(self, filename="latency_log.txt"):
+        with self._lock:
+            records_copy = list(self._records)
+        log_dir = os.path.join("experimental_results", self._session_timestamp)
+        os.makedirs(log_dir, exist_ok=True)
+        filepath = os.path.join(log_dir, filename)
+        with open(filepath, 'w') as f:
+            f.write("frame,capture_ms,inference_ms,display_ms,total_ms\n")
+            for r in records_copy:
+                f.write(f"{r[0]},{r[1]:.3f},{r[2]:.3f},{r[3]:.3f},{r[4]:.3f}\n")
+        print(f"[LatencyTracker] Saved {len(records_copy)} frames to {filepath}")
+
+
+class ExperimentConfigDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Experimentkonfiguration")
+        self.setMinimumWidth(400)
+        self.setStyleSheet(
+            "QDialog    { background-color: #1C1C1C; }"
+            "QWidget    { background-color: #1C1C1C; color: #FFFFFF; }"
+            "QLabel     { font-size: 13px; color: #FFFFFF; }"
+            "QComboBox  {"
+            "    background-color: #2D2D2D; color: #FFFFFF;"
+            "    border: 1px solid #3A3A3A; border-radius: 4px;"
+            "    padding: 5px 8px; font-size: 13px; min-height: 24px;"
+            "}"
+            "QComboBox::drop-down { border: none; }"
+            "QComboBox QAbstractItemView {"
+            "    background-color: #2D2D2D; color: #FFFFFF;"
+            "    selection-background-color: #505050; border: 1px solid #3A3A3A;"
+            "}"
+            "QCheckBox { font-size: 13px; color: #FFFFFF; spacing: 8px; }"
+            "QCheckBox::indicator {"
+            "    width: 16px; height: 16px;"
+            "    border: 1px solid #3A3A3A; border-radius: 3px;"
+            "    background-color: #2D2D2D;"
+            "}"
+            "QCheckBox::indicator:checked { background-color: #6A6A6A; }"
+        )
+        self._init_ui()
+
+    def _init_ui(self):
+        outer = QVBoxLayout()
+        outer.setContentsMargins(24, 24, 24, 24)
+        outer.setSpacing(18)
+
+        # Title
+        title = QLabel("Experimentkonfiguration")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF;")
+        title.setAlignment(Qt.AlignCenter)
+        outer.addWidget(title)
+
+        # Dropdowns
+        self.videostream_combo = QComboBox()
+        self.videostream_combo.addItems(["USB", "RTSP", "CSI"])
+
+        self.kamera_combo = QComboBox()
+        self.kamera_combo.addItems(["GS", "RS"])
+
+        self.zachse_combo = QComboBox()
+        self.zachse_combo.addItems(["Druckkopf", "Druckbett"])
+
+        self.maschine_combo = QComboBox()
+        self.maschine_combo.addItems(["Bambulab", "RatRig", "Prusa", "Ultimaker"])
+
+        grid = QGridLayout()
+        grid.setSpacing(10)
+        grid.setColumnMinimumWidth(0, 110)
+        grid.setColumnStretch(1, 1)
+
+        rows = [
+            ("Videostream:", self.videostream_combo),
+            ("Kamera:",      self.kamera_combo),
+            ("Z-Achse:",     self.zachse_combo),
+            ("Maschine:",    self.maschine_combo),
+        ]
+        for i, (label_text, widget) in enumerate(rows):
+            lbl = QLabel(label_text)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            grid.addWidget(lbl, i, 0)
+            grid.addWidget(widget, i, 1)
+        outer.addLayout(grid)
+
+        # Checkboxes
+        self.lighting_cb  = QCheckBox("Lighting")
+        self.enclosure_cb = QCheckBox("Enclosure")
+        self.vibration_cb = QCheckBox("Vibration")
+
+        cb_row = QHBoxLayout()
+        cb_row.setSpacing(20)
+        cb_row.addWidget(self.lighting_cb)
+        cb_row.addWidget(self.enclosure_cb)
+        cb_row.addWidget(self.vibration_cb)
+        outer.addLayout(cb_row)
+
+        # Start button
+        start_btn = QPushButton("Start")
+        start_btn.setStyleSheet(
+            "QPushButton {"
+            "    font-size: 14px; padding: 8px 16px; border-radius: 6px;"
+            "    background-color: #2D2D2D; color: #FFFFFF; border: 1px solid #3A3A3A;"
+            "}"
+            "QPushButton:hover   { background-color: #3A3A3A; }"
+            "QPushButton:pressed { background-color: #505050; }"
+        )
+        start_btn.clicked.connect(self.accept)
+        outer.addWidget(start_btn)
+
+        self.setLayout(outer)
+
+    def get_config(self) -> dict:
+        return {
+            "videostream": self.videostream_combo.currentText(),
+            "kamera":      self.kamera_combo.currentText(),
+            "z_achse":     self.zachse_combo.currentText(),
+            "maschine":    self.maschine_combo.currentText(),
+            "lighting":    self.lighting_cb.isChecked(),
+            "enclosure":   self.enclosure_cb.isChecked(),
+            "vibration":   self.vibration_cb.isChecked(),
+        }
+
+
+class PersonAlarmDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Person erkannt!")
+        self.setModal(False)
+        self.setMinimumWidth(380)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setStyleSheet(
+            "QDialog  { background-color: #1C1C1C; }"
+            "QWidget  { background-color: #1C1C1C; color: #FFFFFF; }"
+            "QLabel   { font-size: 14px; color: #FF5555; }"
+            "QPushButton {"
+            "    font-size: 13px; padding: 8px 16px; border-radius: 6px;"
+            "    background-color: #2D2D2D; color: #FFFFFF; border: 1px solid #3A3A3A;"
+            "}"
+            "QPushButton:hover   { background-color: #3A3A3A; }"
+            "QPushButton:pressed { background-color: #505050; }"
+        )
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(20)
+
+        msg = QLabel("Person erkannt!\nBitte Druckvorgang überprüfen.")
+        msg.setAlignment(Qt.AlignCenter)
+        msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #FF5555;")
+        layout.addWidget(msg)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+
+        continue_btn = QPushButton("Continue printing")
+        continue_btn.clicked.connect(self.close)
+        btn_row.addWidget(continue_btn)
+
+        stop_btn = QPushButton("Stop Process")
+        stop_btn.clicked.connect(self._on_stop_process)
+        btn_row.addWidget(stop_btn)
+
+        layout.addLayout(btn_row)
+        self.setLayout(layout)
+
+    def _on_stop_process(self):
+        # TODO: implement stop process behaviour
+        self.close()
+
+
 class VideoApp(QMainWindow):
-    def __init__(self, video_processor):
+    def __init__(self, video_processor, session_id: str = None):
         super().__init__()
         self.video_processor = video_processor
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
+        self.latency_tracker = LatencyTracker(window_size=60, session_id=session_id)
+        self._person_consecutive = 0
+        self._alarm_dialog = None
 
         # Start video processing
         if not self.video_processor.open_stream():
@@ -151,10 +383,27 @@ class VideoApp(QMainWindow):
         self.video_label.setFixedSize(available_width, available_height)
 
     def update_frame(self):
+        t0 = time.perf_counter()
         ret, frame = self.video_processor.read_frame()
+        t1 = time.perf_counter()
         if ret:
             processed_frame = self.video_processor.process_frame(frame)
+            t2 = time.perf_counter()
             self.display_frame(processed_frame)
+            t3 = time.perf_counter()
+            self.latency_tracker.record(
+                t_capture_ms   = (t1 - t0) * 1000.0,
+                t_inference_ms = (t2 - t1) * 1000.0,
+                t_display_ms   = (t3 - t2) * 1000.0,
+                t_total_ms     = (t3 - t0) * 1000.0,
+            )
+            if self.video_processor.person_detected:
+                self._person_consecutive += 1
+                if self._person_consecutive == 5:
+                    self._save_alarm_frame(processed_frame)
+                    self._show_alarm()
+            else:
+                self._person_consecutive = 0
         else:
             self.timer.stop()
             print("Error: Failed to read frame")
@@ -189,18 +438,33 @@ class VideoApp(QMainWindow):
 
     def button1_action(self):
         print("Action 1 triggered")
-        YOLOProcessor.change_model(processor, "YOLO11n-seg-ret.pt")
+        self.video_processor.change_model("YOLO11n-seg-ret.pt")
 
     def button2_action(self):
         print("Action 2 triggered")
-        YOLOProcessor.change_model(processor, "yolo11n-seg.pt")
+        self.video_processor.change_model("yolo11n-seg.pt")
 
     def button3_action(self):
         print("Action 3 triggered")
-        YOLOProcessor.change_model(processor, "yolov8n-seg.pt")
+        self.video_processor.change_model("yolov8n-seg.pt")
+
+    def _save_alarm_frame(self, frame):
+        log_dir = os.path.join("experimental_results", self.latency_tracker._session_timestamp)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filepath = os.path.join(log_dir, f"person_alarm_{ts}.jpg")
+        cv2.imwrite(filepath, frame)
+        print(f"[Alarm] Frame saved to {filepath}")
+
+    def _show_alarm(self):
+        if self._alarm_dialog is not None and self._alarm_dialog.isVisible():
+            return
+        self._alarm_dialog = PersonAlarmDialog(parent=self)
+        self._alarm_dialog.show()
 
     def closeEvent(self, event):
         # Stop the video capture and close windows when the app is closed
+        self.latency_tracker.stop()
+        self.latency_tracker.save_log("latency_log.txt")
         self.video_processor.close_stream()
         event.accept()
 
@@ -216,12 +480,14 @@ class YOLOProcessor(VideoProcessor):
         # Check for CUDA device and set it
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print(f'Using device: {device}')
+        self.device = device
         
         self.model = YOLO(model_path)
         
         # Configuration
         self.conf_threshold = 0.5
         self.colors = np.random.randint(0, 255, size=(100, 3)).tolist()
+        self.person_detected = False
     
     def change_model(self, new_model_path: str):
         """Change the YOLO model without restarting the video stream."""
@@ -260,7 +526,13 @@ class YOLOProcessor(VideoProcessor):
         )[0]
         
         processed_frame = frame.copy()
-        
+
+        # Update person_detected for this frame
+        self.person_detected = (
+            results.boxes is not None
+            and any(results.names[int(b.cls[0])] == "person" for b in results.boxes)
+        )
+
         if hasattr(results, 'masks') and results.masks is not None:
             # Process each detection
             for i, (box, mask) in enumerate(zip(results.boxes, results.masks)):
@@ -330,7 +602,7 @@ if __name__ == "__main__":
     # CSI camera:  camera_id = "nvarguscamerasrc ! ..."
     # RTSP stream: camera_id = rtsp_pipeline (below)
 
-    RTSP_URL = "rtsp://192.168.178.75:8554/cam"
+    RTSP_URL = "rtsp://192.168.178.68:8554/cam"
     rtsp_pipeline = (
         f"rtspsrc location={RTSP_URL} latency=200 ! "
         "rtph264depay ! h264parse ! nvv4l2decoder ! "
@@ -339,8 +611,25 @@ if __name__ == "__main__":
     )
 
     app = QApplication(sys.argv)
-    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
-    # processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
-    video_app = VideoApp(processor)
+
+    # Show experiment configuration dialog before starting inference
+    config_dialog = ExperimentConfigDialog()
+    if config_dialog.exec_() != QDialog.Accepted:
+        sys.exit(0)
+
+    config = config_dialog.get_config()
+    session_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Save experiment config to the session folder
+    log_dir = os.path.join("experimental_results", session_ts)
+    os.makedirs(log_dir, exist_ok=True)
+    config_path = os.path.join(log_dir, "experiment_config.json")
+    with open(config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+    print(f"[Config] Saved to {config_path}")
+
+    #processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
+    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
+    video_app = VideoApp(processor, session_id=session_ts)
     video_app.show()
     sys.exit(app.exec_())

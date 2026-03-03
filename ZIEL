@@ -1,0 +1,82 @@
+ZIEL
+
+Crear un framework/pipeline para configurar, realizar, visualizar y documentar los experimentos de deteccion de errores en el proceso de impresion 3D.
+
+Was muss das Pipeline können?
+	- Establecer las configuraciones del experimento: a traves de un archivo de texto, yaml o json
+	- Acceder a la fuente de video
+	- Realizar la inferencia
+	- Visualizar el resultado de la inferencia y las configs del experimento
+	- Senalizar alarma en caso de deteccion de error
+	- Guardar frames cada 5s? identificando configs de experimento
+	- Guardar frame en caso de deteccion de error identificando configs de experimento
+	- Medir latencia(s)
+	- Evaluar el rendimiento de la inferencia
+	- Guardar la evaluacion identificando configs de experimento
+	- Terminar el experimento al recibir una senal
+    - Mandar una senal de Pausa via MQTT (para Bambulab) o API (Octoprint, Ultimaker) O step (para Prusa)
+
+
+Que quiero medir?
+del modelo:
+* mAP con fotos de internet de piezas normales vs piezas con layer shift
+
+del sistema:
+* Latencia
+	- maxima
+	- minima
+	- promedio
+* Etapas
+	- e2e
+	- video source
+	- preprocess
+	- inference
+	- postprocess
+	- output
+	- display
+* mAP validacion con 100 fotos anotadas de internet
+* mAP experimental (COMO??)
+
+TO DOs:
+
+* PREGUNTAS PARA MAX:
+    -
+
+* PIPELINE:
+    - guardar un frame al detectar
+    - ventana de alarma al detectar
+	- hacer prueba del modelo de stutzstrukturen en el instituto
+	- devolver output en formato deseado (MQTT/ OPC UA)
+	- detener el programa a partir de una senal
+	- rpi/Jetson debe mandar una senal de pausa a la impresora
+        * Octoprint API
+        * Bambu MQTT
+        * Ultimaker API
+        * Prusa STEP
+* POSTPROCESSING:
+	- convertir log txt en cvs, excel o pandas
+	- hacer graficas
+* GUI:
+    - mostrar parametros como titulo de la ventana de visualizacion
+	- trigger senal de pausar el proceso & reanudar
+		* y/o indicar que se envio senal para pausar 
+		* y/o indicar que esta en pausa de acuerdo al feedabk/senal proveniente de la impresora
+	- luz de alarma roja (probs USB) que se apaga cuando el usuario responde (continuar o parar)
+	- maybe senal sonora (buzzer)
+	- current e2e latency (maybe diferenciar entre modo experimento y modo user?)
+* CAD:
+	- cableado?
+	- como fijamos alarma luminica y sonora?
+* ORGA:
+	- presionar a Johannes por el modelo de inferencia
+	- mandar link de DoE a Max
+	- Nutzwertanalyse!! 
+		* Como se hace? (con fuentes)
+		* Hacerlo e insertarlo al documento de word
+	- conectar ventilador a rpi io pins: dejar uno libre, power +5V (amarillo), ground (negro), dejar dos libres, pwm signal +5V (azul)
+	- revisar y etablecer las variables de los experimentos: HW: STREAM, CAMERA, COMPUTER; EXP: Beleuchtung, enclosure, Vibration, Bewegung in Z, Kamerawinkel
+	- determinar otros factores a documentar (temperatura)
+	- establecer formato de output del sistema (json, opcua,...)
+	- crear dataset para evaluar el modelo (colectar y labelear (COCO igwas) imagenes)
+
+If the "Stop Process" Button is clicked there is a Signal that needs to be sent to the 3d Printer depending on the "maschine" variable selected at the beginning. If  the "maschine" variable is "RatRig", use Octoprints API to send the command "cancel"; if "mashcine" is "Bambulab" use MQTT to stop the print; if "maschine" is "Prusa" use the Prusa REST API to stop_print(); if "maschine" is "Ultimaker" use the Ultimaker REST API to abort the printing process.
