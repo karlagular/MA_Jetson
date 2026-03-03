@@ -15,6 +15,7 @@ from PyQt5.QtCore import QTimer, Qt
 from typing import Optional, Tuple
 from ultralytics import YOLO
 import torch
+import printer_control
 
 class VideoProcessor:
     def __init__(self, camera_id = 0, width: int = 640, height: int = 480):
@@ -229,8 +230,9 @@ class ExperimentConfigDialog(QDialog):
 
 
 class PersonAlarmDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, machine: str = ""):
         super().__init__(parent)
+        self._machine = machine
         self.setWindowTitle("Person erkannt!")
         self.setModal(False)
         self.setMinimumWidth(380)
@@ -273,14 +275,15 @@ class PersonAlarmDialog(QDialog):
         self.setLayout(layout)
 
     def _on_stop_process(self):
-        # TODO: implement stop process behaviour
+        printer_control.stop_print(self._machine)
         self.close()
 
 
 class VideoApp(QMainWindow):
-    def __init__(self, video_processor, session_id: str = None):
+    def __init__(self, video_processor, session_id: str = None, machine: str = ""):
         super().__init__()
         self.video_processor = video_processor
+        self._machine = machine
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
@@ -458,7 +461,7 @@ class VideoApp(QMainWindow):
     def _show_alarm(self):
         if self._alarm_dialog is not None and self._alarm_dialog.isVisible():
             return
-        self._alarm_dialog = PersonAlarmDialog(parent=self)
+        self._alarm_dialog = PersonAlarmDialog(parent=self, machine=self._machine)
         self._alarm_dialog.show()
 
     def closeEvent(self, event):
@@ -630,6 +633,6 @@ if __name__ == "__main__":
 
     #processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
     processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
-    video_app = VideoApp(processor, session_id=session_ts)
+    video_app = VideoApp(processor, session_id=session_ts, machine=config["maschine"])
     video_app.show()
     sys.exit(app.exec_())
