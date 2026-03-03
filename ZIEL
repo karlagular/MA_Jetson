@@ -43,12 +43,10 @@ TO DOs:
     -
 
 * PIPELINE:
-    - guardar un frame al detectar
-    - ventana de alarma al detectar
+    - de acuerdo a variables en la mascara del gui configurar fuente de video
 	- hacer prueba del modelo de stutzstrukturen en el instituto
 	- devolver output en formato deseado (MQTT/ OPC UA)
-	- detener el programa a partir de una senal
-	- rpi/Jetson debe mandar una senal de pausa a la impresora
+	- test detener impresion:
         * Octoprint API
         * Bambu MQTT
         * Ultimaker API
@@ -73,10 +71,7 @@ TO DOs:
 	- Nutzwertanalyse!! 
 		* Como se hace? (con fuentes)
 		* Hacerlo e insertarlo al documento de word
-	- conectar ventilador a rpi io pins: dejar uno libre, power +5V (amarillo), ground (negro), dejar dos libres, pwm signal +5V (azul)
 	- revisar y etablecer las variables de los experimentos: HW: STREAM, CAMERA, COMPUTER; EXP: Beleuchtung, enclosure, Vibration, Bewegung in Z, Kamerawinkel
 	- determinar otros factores a documentar (temperatura)
 	- establecer formato de output del sistema (json, opcua,...)
 	- crear dataset para evaluar el modelo (colectar y labelear (COCO igwas) imagenes)
-
-If the "Stop Process" Button is clicked there is a Signal that needs to be sent to the 3d Printer depending on the "maschine" variable selected at the beginning. If  the "maschine" variable is "RatRig", use Octoprints API to send the command "cancel"; if "mashcine" is "Bambulab" use MQTT to stop the print; if "maschine" is "Prusa" use the Prusa REST API to stop_print(); if "maschine" is "Ultimaker" use the Ultimaker REST API to abort the printing process.
