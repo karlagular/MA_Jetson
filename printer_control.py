@@ -285,22 +285,100 @@ def _prusa_status_indicates_active_job(status: dict | None) -> bool:
 def _stop_ultimaker(cfg: dict) -> None:
     # Ultimaker REST API — PUT /api/v1/print_job/state {"target": "abort"}
     url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
-    r = requests.put(
-        url,
-        json={"target": "abort"},
-        auth=HTTPDigestAuth(cfg["username"], cfg["password"]),
-        timeout=10,
-    )
-    print(f"[PrinterControl] Ultimaker abort: HTTP {r.status_code}")
+    baseline_state = _fetch_ultimaker_state(cfg)
+
+    r = _ultimaker_request_with_auth(cfg, "PUT", url, json={"target": "abort"})
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] Ultimaker abort: HTTP {r.status_code}")
+        return
+
+    # Some firmwares acknowledge state changes with delay. Confirm by state.
+    time.sleep(1.0)
+    current_state = _fetch_ultimaker_state(cfg)
+    if _ultimaker_state_indicates_active(baseline_state) and not _ultimaker_state_indicates_active(current_state):
+        print(
+            f"[PrinterControl] Ultimaker abort took effect despite HTTP {r.status_code}"
+        )
+        return
+
+    print(f"[PrinterControl] Ultimaker abort failed: HTTP {r.status_code}")
 
 
 def _pause_ultimaker(cfg: dict) -> None:
     # Ultimaker REST API — PUT /api/v1/print_job/state {"target": "pause"}
     url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
-    r = requests.put(
-        url,
-        json={"target": "pause"},
-        auth=HTTPDigestAuth(cfg["username"], cfg["password"]),
-        timeout=10,
-    )
-    print(f"[PrinterControl] Ultimaker pause: HTTP {r.status_code}")
+    baseline_state = _fetch_ultimaker_state(cfg)
+
+    r = _ultimaker_request_with_auth(cfg, "PUT", url, json={"target": "pause"})
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] Ultimaker pause: HTTP {r.status_code}")
+        return
+
+    # Match test-script behavior: verify pause via state endpoint.
+    time.sleep(1.0)
+    current_state = _fetch_ultimaker_state(cfg)
+    if not _ultimaker_state_indicates_paused(baseline_state) and _ultimaker_state_indicates_paused(current_state):
+        print(
+            f"[PrinterControl] Ultimaker pause took effect despite HTTP {r.status_code}"
+        )
+        return
+
+    print(f"[PrinterControl] Ultimaker pause failed: HTTP {r.status_code}")
+
+
+def _ultimaker_request_with_auth(cfg: dict, method: str, url: str, **kwargs) -> requests.Response:
+    """Try Ultimaker Digest auth with username, then pairing_id fallback on 403."""
+    timeout_seconds = 10
+    username = cfg.get("username")
+    pairing_id = cfg.get("pairing_id")
+    password = cfg.get("password")
+
+    auth_candidates = []
+    if username and password:
+        auth_candidates.append((username, password, "username"))
+    if pairing_id and password and pairing_id != username:
+        auth_candidates.append((pairing_id, password, "pairing_id"))
+
+    if not auth_candidates:
+        raise ValueError("Ultimaker config missing username/password or pairing_id/password")
+
+    last_response = None
+    for user, pwd, source in auth_candidates:
+        response = requests.request(
+            method,
+            url,
+            auth=HTTPDigestAuth(user, pwd),
+            timeout=timeout_seconds,
+            **kwargs,
+        )
+        last_response = response
+        if response.status_code != 403:
+            if source != "username":
+                print(f"[PrinterControl] Ultimaker auth fallback succeeded via {source}")
+            return response
+
+    return last_response
+
+
+def _fetch_ultimaker_state(cfg: dict) -> str | None:
+    """Fetch current Ultimaker print-job state string, e.g. 'printing'."""
+    url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
+    try:
+        r = requests.get(url, timeout=10)
+        if not (200 <= r.status_code < 300):
+            return None
+        return r.text.strip().strip('"').lower()
+    except Exception:
+        return None
+
+
+def _ultimaker_state_indicates_paused(state: str | None) -> bool:
+    if not state:
+        return False
+    return state in {"paused", "pausing"}
+
+
+def _ultimaker_state_indicates_active(state: str | None) -> bool:
+    if not state:
+        return False
+    return state in {"printing", "paused", "pausing", "resuming"}
