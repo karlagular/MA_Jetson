@@ -50,7 +50,7 @@ TO DOs:
         * Octoprint API
         * Bambu MQTT
         * Ultimaker API
-        * Prusa STEP
+        * DONE: Prusa STEP
 * POSTPROCESSING:
 	- convertir log txt en cvs, excel o pandas
 	- hacer graficas
@@ -66,7 +66,7 @@ TO DOs:
 	- cableado?
 	- como fijamos alarma luminica y sonora?
 * ORGA:
-	- presionar a Johannes por el modelo de inferencia
+	- presionar a Johannes por el modelo de inferencia y preguntar como funciona su ratrig headless
 	- mandar link de DoE a Max
 	- Nutzwertanalyse!! 
 		* Como se hace? (con fuentes)
