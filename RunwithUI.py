@@ -275,7 +275,8 @@ class PersonAlarmDialog(QDialog):
         self.setLayout(layout)
 
     def _on_stop_process(self):
-        printer_control.stop_print(self._machine)
+        #aktuell pause statt stop 
+        printer_control.pause_print(self._machine)
         self.close()
 
 
@@ -600,7 +601,7 @@ class YOLOProcessor(VideoProcessor):
         return processed_frame
 
 if __name__ == "__main__":
-    # --- Source selection ---
+    # --- Source selection --- (comment or uncomment the processor lines as needed)
     # USB webcam:  camera_id = 0
     # CSI camera:  camera_id = "nvarguscamerasrc ! ..."
     # RTSP stream: camera_id = rtsp_pipeline (below)
@@ -631,8 +632,8 @@ if __name__ == "__main__":
         json.dump(config, f, indent=2, ensure_ascii=False)
     print(f"[Config] Saved to {config_path}")
 
-    #processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
-    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
+    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
+    #processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
     video_app = VideoApp(processor, session_id=session_ts, machine=config["maschine"])
     video_app.show()
     sys.exit(app.exec_())
