@@ -43,6 +43,7 @@ TO DOs:
     -
 
 * PIPELINE:
+	- al seleccionar Stop Printing decidir si se cierra el programa, se congelan los botones o que pasa
     - de acuerdo a variables en la mascara del gui configurar fuente de video
 	- hacer prueba del modelo de stutzstrukturen en el instituto
 	- devolver output en formato deseado (MQTT/ OPC UA)
