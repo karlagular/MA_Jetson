@@ -34,7 +34,7 @@ def _run_pause(machine: str) -> None:
 
     try:
         if machine == "RatRig":
-            _pause_octoprint(cfg)
+            _pause_klipper(cfg)
         elif machine == "Bambulab":
             _pause_bambulab(cfg)
         elif machine == "Prusa":
@@ -60,7 +60,7 @@ def _run_stop(machine: str) -> None:
 
     try:
         if machine == "RatRig":
-            _stop_octoprint(cfg)
+            _stop_klipper(cfg)
         elif machine == "Bambulab":
             _stop_bambulab(cfg)
         elif machine == "Prusa":
@@ -95,6 +95,38 @@ def _pause_octoprint(cfg: dict) -> None:
         timeout=10,
     )
     print(f"[PrinterControl] OctoPrint pause: HTTP {r.status_code}")
+
+
+def _klipper_base_url(cfg: dict) -> str:
+    """Resolve Moonraker base URL from config."""
+    base = cfg.get("moonraker_url") or cfg.get("url") or cfg.get("host")
+    if not base:
+        raise ValueError("RatRig config requires 'moonraker_url' (or 'url'/'host')")
+    if not str(base).startswith(("http://", "https://")):
+        base = "http://" + str(base)
+    return str(base).rstrip("/")
+
+
+def _pause_klipper(cfg: dict) -> None:
+    # Klipper Moonraker — POST /printer/print/pause
+    base = _klipper_base_url(cfg)
+    url = f"{base}/printer/print/pause"
+    r = requests.post(url, timeout=10)
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] RatRig(Klipper) pause: HTTP {r.status_code}")
+        return
+    print(f"[PrinterControl] RatRig(Klipper) pause failed: HTTP {r.status_code}")
+
+
+def _stop_klipper(cfg: dict) -> None:
+    # Klipper Moonraker — POST /printer/print/cancel
+    base = _klipper_base_url(cfg)
+    url = f"{base}/printer/print/cancel"
+    r = requests.post(url, timeout=10)
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] RatRig(Klipper) cancel: HTTP {r.status_code}")
+        return
+    print(f"[PrinterControl] RatRig(Klipper) cancel failed: HTTP {r.status_code}")
 
 
 def _bambu_new_sequence_id() -> str:
