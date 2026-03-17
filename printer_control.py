@@ -8,6 +8,7 @@ import requests
 from requests.auth import HTTPDigestAuth
 
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "machine_config.json")
+_BAMBU_ACTIVE_STATES = {"RUNNING", "PAUSE", "PAUSED", "PAUSING", "RESUMING", "PREPARE"}
 
 
 def pause_print(machine: str) -> None:
@@ -96,44 +97,226 @@ def _pause_octoprint(cfg: dict) -> None:
     print(f"[PrinterControl] OctoPrint pause: HTTP {r.status_code}")
 
 
+def _bambu_new_sequence_id() -> str:
+    return str(time.time_ns())
+
+
+def _bambu_find_first_key(node, target_keys: set[str]):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k in target_keys and isinstance(v, str):
+                return v
+            found = _bambu_find_first_key(v, target_keys)
+            if found:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _bambu_find_first_key(item, target_keys)
+            if found:
+                return found
+    return None
+
+
+def _bambu_is_paused_state(state: str | None) -> bool:
+    if not state:
+        return False
+    return state.strip().upper() in {"PAUSE", "PAUSED", "PAUSING"}
+
+
+def _bambu_is_active_state(state: str | None) -> bool:
+    if not state:
+        return False
+    return state.strip().upper() in _BAMBU_ACTIVE_STATES
+
+
 def _stop_bambulab(cfg: dict) -> None:
-    # Bambulab local MQTT broker on port 8883 (TLS, self-signed cert)
+    # Bambulab local MQTT broker on port 8883 (TLS, self-signed cert).
+    # Uses minimal accepted command schema and report-based confirmation.
     import paho.mqtt.client as mqtt
 
-    topic = f"device/{cfg['serial']}/request"
-    payload = json.dumps({
-        "print": {"sequence_id": "0", "command": "stop", "param": ""}
-    })
+    request_topic = f"device/{cfg['serial']}/request"
+    report_topic = f"device/{cfg['serial']}/report"
+
+    latest_state = {"value": None}
+    latest_payload = {"value": None}
+    latest_print_result = {"value": None}
+    latest_print_reason = {"value": None}
+    report_event = threading.Event()
+
+    def on_connect(client, _userdata, _flags, rc):
+        if rc != 0:
+            print(f"[PrinterControl] Bambulab MQTT connect failed with rc={rc}")
+            return
+        client.subscribe(report_topic)
+
+    def on_message(_client, _userdata, msg):
+        try:
+            payload = json.loads(msg.payload.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            return
+
+        latest_payload["value"] = payload
+        state = _bambu_find_first_key(payload, {"gcode_state", "print_state", "state"})
+        if state:
+            latest_state["value"] = state
+
+        if isinstance(payload, dict) and isinstance(payload.get("print"), dict):
+            p = payload["print"]
+            if isinstance(p.get("result"), str):
+                latest_print_result["value"] = p.get("result")
+            if isinstance(p.get("reason"), str):
+                latest_print_reason["value"] = p.get("reason")
+
+        report_event.set()
 
     client = mqtt.Client()
     client.username_pw_set("bblp", cfg["access_code"])
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
+    client.on_connect = on_connect
+    client.on_message = on_message
     client.connect(cfg["host"], 8883, keepalive=10)
-    client.publish(topic, payload)
-    client.loop(timeout=2.0)  # pump network once to flush the publish
-    client.disconnect()
-    print("[PrinterControl] Bambulab stop sent via MQTT")
+    client.loop_start()
+
+    try:
+        status_request = {
+            "pushing": {
+                "sequence_id": _bambu_new_sequence_id(),
+                "command": "pushall",
+            }
+        }
+        client.publish(request_topic, json.dumps(status_request))
+        report_event.wait(timeout=6.0)
+        baseline_state = latest_state["value"]
+
+        if not _bambu_is_active_state(baseline_state):
+            print("[PrinterControl] Bambulab stop skipped: no active print job")
+            return
+
+        stop_request = {
+            "print": {
+                "sequence_id": _bambu_new_sequence_id(),
+                "command": "stop",
+            }
+        }
+        latest_print_result["value"] = None
+        latest_print_reason["value"] = None
+        client.publish(request_topic, json.dumps(stop_request))
+
+        deadline = time.time() + 20.0
+        while time.time() < deadline:
+            if not _bambu_is_active_state(latest_state["value"]):
+                print(f"[PrinterControl] Bambulab stop confirmed (state={latest_state['value']!r})")
+                return
+
+            result = (latest_print_result["value"] or "").strip().upper()
+            reason = (latest_print_reason["value"] or "").strip()
+            if result == "FAIL":
+                print(f"[PrinterControl] Bambulab stop failed: reason={reason!r}")
+                return
+
+            report_event.wait(timeout=0.5)
+            report_event.clear()
+
+        print(f"[PrinterControl] Bambulab stop not confirmed (state={latest_state['value']!r})")
+    finally:
+        client.loop_stop()
+        client.disconnect()
 
 
 def _pause_bambulab(cfg: dict) -> None:
-    # Bambulab local MQTT broker on port 8883 (TLS, self-signed cert)
+    # Bambulab local MQTT broker on port 8883 (TLS, self-signed cert).
+    # Uses minimal accepted command schema and report-based confirmation.
     import paho.mqtt.client as mqtt
 
-    topic = f"device/{cfg['serial']}/request"
-    payload = json.dumps({
-        "print": {"sequence_id": "0", "command": "pause", "param": ""}
-    })
+    request_topic = f"device/{cfg['serial']}/request"
+    report_topic = f"device/{cfg['serial']}/report"
+
+    latest_state = {"value": None}
+    latest_payload = {"value": None}
+    latest_print_result = {"value": None}
+    latest_print_reason = {"value": None}
+    report_event = threading.Event()
+
+    def on_connect(client, _userdata, _flags, rc):
+        if rc != 0:
+            print(f"[PrinterControl] Bambulab MQTT connect failed with rc={rc}")
+            return
+        client.subscribe(report_topic)
+
+    def on_message(_client, _userdata, msg):
+        try:
+            payload = json.loads(msg.payload.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            return
+
+        latest_payload["value"] = payload
+        state = _bambu_find_first_key(payload, {"gcode_state", "print_state", "state"})
+        if state:
+            latest_state["value"] = state
+
+        if isinstance(payload, dict) and isinstance(payload.get("print"), dict):
+            p = payload["print"]
+            if isinstance(p.get("result"), str):
+                latest_print_result["value"] = p.get("result")
+            if isinstance(p.get("reason"), str):
+                latest_print_reason["value"] = p.get("reason")
+
+        report_event.set()
 
     client = mqtt.Client()
     client.username_pw_set("bblp", cfg["access_code"])
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
+    client.on_connect = on_connect
+    client.on_message = on_message
     client.connect(cfg["host"], 8883, keepalive=10)
-    client.publish(topic, payload)
-    client.loop(timeout=2.0)  # pump network once to flush the publish
-    client.disconnect()
-    print("[PrinterControl] Bambulab pause sent via MQTT")
+    client.loop_start()
+
+    try:
+        status_request = {
+            "pushing": {
+                "sequence_id": _bambu_new_sequence_id(),
+                "command": "pushall",
+            }
+        }
+        client.publish(request_topic, json.dumps(status_request))
+        report_event.wait(timeout=6.0)
+        baseline_state = latest_state["value"]
+
+        if _bambu_is_paused_state(baseline_state):
+            print("[PrinterControl] Bambulab pause skipped: already paused")
+            return
+
+        pause_request = {
+            "print": {
+                "sequence_id": _bambu_new_sequence_id(),
+                "command": "pause",
+            }
+        }
+        latest_print_result["value"] = None
+        latest_print_reason["value"] = None
+        client.publish(request_topic, json.dumps(pause_request))
+
+        deadline = time.time() + 15.0
+        while time.time() < deadline:
+            if _bambu_is_paused_state(latest_state["value"]):
+                print(f"[PrinterControl] Bambulab pause confirmed (state={latest_state['value']!r})")
+                return
+
+            result = (latest_print_result["value"] or "").strip().upper()
+            reason = (latest_print_reason["value"] or "").strip()
+            if result == "FAIL":
+                print(f"[PrinterControl] Bambulab pause failed: reason={reason!r}")
+                return
+
+            report_event.wait(timeout=0.5)
+            report_event.clear()
+
+        print(f"[PrinterControl] Bambulab pause not confirmed (state={latest_state['value']!r})")
+    finally:
+        client.loop_stop()
+        client.disconnect()
 
 
 def _stop_prusa(cfg: dict) -> None:
