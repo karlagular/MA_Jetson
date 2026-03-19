@@ -57,6 +57,70 @@ class VideoProcessor:
             self.stream.release()
         cv2.destroyAllWindows()
 
+
+class BaslerVideoProcessor:
+    """Video processor that grabs frames from a Basler USB camera via pypylon."""
+
+    def __init__(self, serial: str | None = None):
+        self.serial = serial
+        self._camera = None
+        self._converter = None
+
+    def open_stream(self) -> bool:
+        try:
+            from pypylon import pylon
+        except ImportError:
+            print("ERROR: pypylon is not installed. Run: pip install pypylon")
+            return False
+
+        factory = pylon.TlFactory.GetInstance()
+        devices = factory.EnumerateDevices()
+        if not devices:
+            print("ERROR: No Basler camera detected.")
+            return False
+
+        selected = devices[0]
+        if self.serial:
+            for dev in devices:
+                if dev.GetSerialNumber() == self.serial:
+                    selected = dev
+                    break
+
+        self._camera = pylon.InstantCamera(factory.CreateDevice(selected))
+        self._camera.Open()
+
+        self._converter = pylon.ImageFormatConverter()
+        self._converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        self._converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+
+        self._camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        info = self._camera.GetDeviceInfo()
+        print(f"[Basler] Opened {info.GetModelName()} serial={info.GetSerialNumber()}")
+        return True
+
+    def read_frame(self):
+        if self._camera is None or not self._camera.IsGrabbing():
+            return False, None
+        from pypylon import pylon
+        grab = self._camera.RetrieveResult(3000, pylon.TimeoutHandling_Return)
+        if grab is None or not grab.GrabSucceeded():
+            if grab is not None:
+                grab.Release()
+            return False, None
+        image = self._converter.Convert(grab)
+        frame = image.GetArray()
+        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        grab.Release()
+        return True, frame
+
+    def close_stream(self):
+        if self._camera is not None:
+            if self._camera.IsGrabbing():
+                self._camera.StopGrabbing()
+            if self._camera.IsOpen():
+                self._camera.Close()
+            self._camera = None
+
 class LatencyTracker:
     def __init__(self, window_size: int = 60, session_id: str = None):
         self._records = []  # list of (frame_idx, capture_ms, inference_ms, display_ms, total_ms)
@@ -164,7 +228,7 @@ class ExperimentConfigDialog(QDialog):
         self.videostream_combo.addItems(["USB", "RTSP", "CSI"])
 
         self.kamera_combo = QComboBox()
-        self.kamera_combo.addItems(["GS", "RS"])
+        self.kamera_combo.addItems(["USB Basler BW Fix", "RTSP rpi cam 3 wide", "USB Webcam Logitech"])
 
         self.zachse_combo = QComboBox()
         self.zachse_combo.addItems(["Druckkopf", "Druckbett"])
@@ -472,6 +536,28 @@ class VideoApp(QMainWindow):
         self.video_processor.close_stream()
         event.accept()
 
+class BaslerYOLOProcessor(BaslerVideoProcessor):
+    """YOLO processor that grabs frames from a Basler USB camera."""
+
+    def __init__(self, model_path: str, serial: str | None = None):
+        super().__init__(serial)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f'Using device: {device}')
+        self.device = device
+        self.model = YOLO(model_path)
+        self.conf_threshold = 0.5
+        self.colors = np.random.randint(0, 255, size=(100, 3)).tolist()
+        self.person_detected = False
+
+    def change_model(self, new_model_path: str):
+        print(f"Switching model to: {new_model_path}")
+        self.model = YOLO(new_model_path)
+        self.model.to(self.device)
+        print(f"Model changed to: {new_model_path}")
+
+    process_frame = None  # assigned below after YOLOProcessor is defined
+
+
 class YOLOProcessor(VideoProcessor):
     def __init__(self, model_path: str, camera_id: int = 0):
         """
@@ -600,6 +686,10 @@ class YOLOProcessor(VideoProcessor):
         
         return processed_frame
 
+# Share process_frame / draw_mask between both YOLO processors
+BaslerYOLOProcessor.process_frame = YOLOProcessor.process_frame
+BaslerYOLOProcessor.draw_mask = staticmethod(YOLOProcessor.draw_mask)
+
 if __name__ == "__main__":
     # --- Source selection --- (comment or uncomment the processor lines as needed)
     # USB webcam:  camera_id = 0
@@ -632,8 +722,14 @@ if __name__ == "__main__":
         json.dump(config, f, indent=2, ensure_ascii=False)
     print(f"[Config] Saved to {config_path}")
 
-    processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)  # USB webcam
-    #processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)  # RTSP
+    kamera = config["kamera"]
+    if kamera == "USB Basler BW Fix":
+        processor = BaslerYOLOProcessor('yolo11n-seg.pt')
+    elif kamera == "RTSP rpi cam 3 wide":
+        processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)
+    else:  # "USB Webcam Logitech" or fallback
+        processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)
+
     video_app = VideoApp(processor, session_id=session_ts, machine=config["maschine"])
     video_app.show()
     sys.exit(app.exec_())
