@@ -35,6 +35,11 @@ def parse_args() -> argparse.Namespace:
         help="Show live preview via OpenCV window.",
     )
     parser.add_argument(
+        "--display-klein",
+        action="store_true",
+        help="Show live preview scaled to fit the screen while keeping aspect ratio.",
+    )
+    parser.add_argument(
         "--save-dir",
         type=str,
         default=None,
@@ -80,6 +85,9 @@ def main() -> int:
     except ImportError:
         print("ERROR: pypylon is not installed. Install with: python3 -m pip install pypylon")
         return 1
+
+    if args.display_klein:
+        args.display = True
 
     cv2 = None
     if args.display or args.save_dir:
@@ -146,8 +154,23 @@ def main() -> int:
     frame_count = 0
     start_time = time.time()
 
+    screen_size = None
     if args.display and cv2 is not None:
-        cv2.namedWindow("Basler Preview", cv2.WINDOW_AUTOSIZE)
+        if args.display_klein:
+            cv2.namedWindow("Basler Preview", cv2.WINDOW_NORMAL)
+            try:
+                import subprocess as _sp
+                xdp = _sp.check_output(["xdpyinfo"], text=True, stderr=_sp.DEVNULL)
+                for line in xdp.splitlines():
+                    if "dimensions:" in line:
+                        dim = line.split()[1]  # e.g. "1920x1080"
+                        sw, sh = map(int, dim.split("x"))
+                        screen_size = (sw, sh)
+                        break
+            except Exception:
+                screen_size = (1280, 720)
+        else:
+            cv2.namedWindow("Basler Preview", cv2.WINDOW_AUTOSIZE)
 
     camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     print("Started grabbing. Press Ctrl+C to stop.")
@@ -180,7 +203,17 @@ def main() -> int:
                 cv2.imwrite(str(out_path), frame)
 
             if args.display and cv2 is not None:
-                cv2.imshow("Basler Preview", frame)
+                show = frame
+                if screen_size is not None:
+                    fh, fw = frame.shape[:2]
+                    sw, sh = screen_size
+                    scale = min(sw / fw, sh / fh, 1.0)
+                    if scale < 1.0:
+                        new_w = int(fw * scale)
+                        new_h = int(fh * scale)
+                        show = cv2.resize(frame, (new_w, new_h))
+                        cv2.resizeWindow("Basler Preview", new_w, new_h)
+                cv2.imshow("Basler Preview", show)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     print("Quit requested from preview window.")
                     break
