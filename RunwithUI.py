@@ -722,6 +722,13 @@ if __name__ == "__main__":
         json.dump(config, f, indent=2, ensure_ascii=False)
     print(f"[Config] Saved to {config_path}")
 
+    # Verify the selected printer is connected and reachable
+    machine = config["maschine"]
+    if printer_control.check_printer_status(machine):
+        print(f"[Config] Printer '{machine}' is connected and available")
+    else:
+        print(f"[Config] WARNING: Printer '{machine}' is not connected or not reachable")
+
     kamera = config["kamera"]
     if kamera == "USB Basler BW Fix":
         processor = BaslerYOLOProcessor('yolo11n-seg.pt')

@@ -11,6 +11,35 @@ _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "machine_config.json")
 _BAMBU_ACTIVE_STATES = {"RUNNING", "PAUSE", "PAUSED", "PAUSING", "RESUMING", "PREPARE"}
 
 
+def check_printer_status(machine: str) -> bool:
+    """Check once whether the selected printer is reachable. Returns True if available."""
+    try:
+        with open(_CONFIG_PATH) as f:
+            cfg = json.load(f)[machine]
+    except FileNotFoundError:
+        print(f"[PrinterControl] machine_config.json not found at {_CONFIG_PATH}")
+        return False
+    except KeyError:
+        print(f"[PrinterControl] No config entry for machine '{machine}'")
+        return False
+
+    try:
+        if machine == "RatRig":
+            return _status_klipper(cfg)
+        elif machine == "Bambulab":
+            return _status_bambulab(cfg)
+        elif machine == "Prusa":
+            return _status_prusa(cfg)
+        elif machine == "Ultimaker":
+            return _status_ultimaker(cfg)
+        else:
+            print(f"[PrinterControl] Unknown machine: '{machine}'")
+            return False
+    except Exception as e:
+        print(f"[PrinterControl] Status check failed for '{machine}': {e}")
+        return False
+
+
 def pause_print(machine: str) -> None:
     """Non-blocking: sends the pause command in a daemon thread."""
     threading.Thread(target=_run_pause, args=(machine,), daemon=True).start()
@@ -71,6 +100,64 @@ def _run_stop(machine: str) -> None:
             print(f"[PrinterControl] Unknown machine: '{machine}'")
     except Exception as e:
         print(f"[PrinterControl] Failed to stop '{machine}': {e}")
+
+
+def _status_klipper(cfg: dict) -> bool:
+    base = _klipper_base_url(cfg)
+    r = requests.get(f"{base}/printer/objects/query?print_stats", timeout=5)
+    return 200 <= r.status_code < 300
+
+
+def _status_bambulab(cfg: dict) -> bool:
+    import paho.mqtt.client as mqtt
+
+    connected = threading.Event()
+    report_received = threading.Event()
+    request_topic = f"device/{cfg['serial']}/request"
+    report_topic = f"device/{cfg['serial']}/report"
+
+    def on_connect(client, _ud, _flags, rc):
+        if rc == 0:
+            connected.set()
+            client.subscribe(report_topic)
+            status_req = {
+                "pushing": {
+                    "sequence_id": _bambu_new_sequence_id(),
+                    "command": "pushall",
+                }
+            }
+            client.publish(request_topic, json.dumps(status_req))
+
+    def on_message(_client, _ud, _msg):
+        report_received.set()
+
+    client = mqtt.Client()
+    client.username_pw_set("bblp", cfg["access_code"])
+    client.tls_set(cert_reqs=ssl.CERT_NONE)
+    client.tls_insecure_set(True)
+    client.on_connect = on_connect
+    client.on_message = on_message
+    try:
+        client.connect(cfg["host"], 8883, keepalive=15)
+        client.loop_start()
+        if not connected.wait(timeout=6):
+            return False
+        return report_received.wait(timeout=6)
+    except Exception:
+        return False
+    finally:
+        client.loop_stop()
+        client.disconnect()
+
+
+def _status_prusa(cfg: dict) -> bool:
+    return _fetch_prusa_status_json(cfg) is not None
+
+
+def _status_ultimaker(cfg: dict) -> bool:
+    url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
+    r = requests.get(url, timeout=5)
+    return 200 <= r.status_code < 300
 
 
 def _stop_octoprint(cfg: dict) -> None:
