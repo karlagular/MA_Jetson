@@ -328,7 +328,7 @@ class PersonAlarmDialog(QDialog):
         btn_row.setSpacing(12)
 
         continue_btn = QPushButton("Continue printing")
-        continue_btn.clicked.connect(self.close)
+        continue_btn.clicked.connect(self._on_continue)
         btn_row.addWidget(continue_btn)
 
         stop_btn = QPushButton("Stop Process")
@@ -338,9 +338,12 @@ class PersonAlarmDialog(QDialog):
         layout.addLayout(btn_row)
         self.setLayout(layout)
 
+    def _on_continue(self):
+        printer_control.resume_print(self._machine)
+        self.close()
+
     def _on_stop_process(self):
-        #aktuell pause statt stop 
-        printer_control.pause_print(self._machine)
+        printer_control.stop_print(self._machine)
         self.close()
 
 
@@ -526,6 +529,7 @@ class VideoApp(QMainWindow):
     def _show_alarm(self):
         if self._alarm_dialog is not None and self._alarm_dialog.isVisible():
             return
+        printer_control.pause_print(self._machine)
         self._alarm_dialog = PersonAlarmDialog(parent=self, machine=self._machine)
         self._alarm_dialog.show()
 

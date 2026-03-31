@@ -50,6 +50,11 @@ def stop_print(machine: str) -> None:
     threading.Thread(target=_run_stop, args=(machine,), daemon=True).start()
 
 
+def resume_print(machine: str) -> None:
+    """Non-blocking: sends the resume command in a daemon thread."""
+    threading.Thread(target=_run_resume, args=(machine,), daemon=True).start()
+
+
 def _run_pause(machine: str) -> None:
     try:
         with open(_CONFIG_PATH) as f:
@@ -100,6 +105,32 @@ def _run_stop(machine: str) -> None:
             print(f"[PrinterControl] Unknown machine: '{machine}'")
     except Exception as e:
         print(f"[PrinterControl] Failed to stop '{machine}': {e}")
+
+
+def _run_resume(machine: str) -> None:
+    try:
+        with open(_CONFIG_PATH) as f:
+            cfg = json.load(f)[machine]
+    except FileNotFoundError:
+        print(f"[PrinterControl] machine_config.json not found at {_CONFIG_PATH}")
+        return
+    except KeyError:
+        print(f"[PrinterControl] No config entry for machine '{machine}'")
+        return
+
+    try:
+        if machine == "RatRig":
+            _resume_klipper(cfg)
+        elif machine == "Bambulab":
+            _resume_bambulab(cfg)
+        elif machine == "Prusa":
+            _resume_prusa(cfg)
+        elif machine == "Ultimaker":
+            _resume_ultimaker(cfg)
+        else:
+            print(f"[PrinterControl] Unknown machine: '{machine}'")
+    except Exception as e:
+        print(f"[PrinterControl] Failed to resume '{machine}': {e}")
 
 
 def _status_klipper(cfg: dict) -> bool:
@@ -158,6 +189,117 @@ def _status_ultimaker(cfg: dict) -> bool:
     url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
     r = requests.get(url, timeout=5)
     return 200 <= r.status_code < 300
+
+
+def _resume_klipper(cfg: dict) -> None:
+    # Klipper Moonraker — POST /printer/print/resume
+    base = _klipper_base_url(cfg)
+    url = f"{base}/printer/print/resume"
+    r = requests.post(url, timeout=10)
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] RatRig(Klipper) resume: HTTP {r.status_code}")
+        return
+    print(f"[PrinterControl] RatRig(Klipper) resume failed: HTTP {r.status_code}")
+
+
+def _resume_bambulab(cfg: dict) -> None:
+    import paho.mqtt.client as mqtt
+
+    request_topic = f"device/{cfg['serial']}/request"
+    report_topic = f"device/{cfg['serial']}/report"
+
+    latest_state = {"value": None}
+    report_event = threading.Event()
+
+    def on_connect(client, _userdata, _flags, rc):
+        if rc != 0:
+            print(f"[PrinterControl] Bambulab MQTT connect failed with rc={rc}")
+            return
+        client.subscribe(report_topic)
+
+    def on_message(_client, _userdata, msg):
+        try:
+            payload = json.loads(msg.payload.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            return
+        state = _bambu_find_first_key(payload, {"gcode_state", "print_state", "state"})
+        if state:
+            latest_state["value"] = state
+        report_event.set()
+
+    client = mqtt.Client()
+    client.username_pw_set("bblp", cfg["access_code"])
+    client.tls_set(cert_reqs=ssl.CERT_NONE)
+    client.tls_insecure_set(True)
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(cfg["host"], 8883, keepalive=15)
+    client.loop_start()
+
+    try:
+        resume_request = {
+            "print": {
+                "sequence_id": _bambu_new_sequence_id(),
+                "command": "resume",
+            }
+        }
+        client.publish(request_topic, json.dumps(resume_request))
+
+        deadline = time.time() + 15.0
+        while time.time() < deadline:
+            if latest_state["value"] and latest_state["value"].strip().upper() == "RUNNING":
+                print(f"[PrinterControl] Bambulab resume confirmed (state={latest_state['value']!r})")
+                return
+
+            report_event.wait(timeout=0.5)
+            report_event.clear()
+
+        print(f"[PrinterControl] Bambulab resume not confirmed (state={latest_state['value']!r})")
+    finally:
+        client.loop_stop()
+        client.disconnect()
+
+
+def _resume_prusa(cfg: dict) -> None:
+    # PrusaLink resume endpoints vary by build; use known working order.
+    base_url = cfg["url"].rstrip("/")
+
+    candidates = [
+        ("POST", base_url + "/api/job", {"command": "pause", "action": "resume"}),
+        ("POST", base_url + "/api/v1/job/resume", None),
+        ("POST", base_url + "/api/v1/job", {"command": "resume"}),
+    ]
+
+    for method, url, payload in candidates:
+        kwargs = {}
+        if payload is not None:
+            kwargs["json"] = payload
+        r = _prusa_request_with_auth(cfg, method, url, **kwargs)
+        if 200 <= r.status_code < 300:
+            print(f"[PrinterControl] Prusa resume: HTTP {r.status_code} via {url}")
+            return
+
+    print("[PrinterControl] Prusa resume failed on all known endpoints")
+
+
+def _resume_ultimaker(cfg: dict) -> None:
+    # Ultimaker REST API — PUT /api/v1/print_job/state {"target": "print"}
+    url = f"http://{cfg['host'].rstrip('/')}/api/v1/print_job/state"
+
+    r = _ultimaker_request_with_auth(cfg, "PUT", url, json={"target": "print"})
+    if 200 <= r.status_code < 300:
+        print(f"[PrinterControl] Ultimaker resume: HTTP {r.status_code}")
+        return
+
+    time.sleep(1.0)
+    current_state = _fetch_ultimaker_state(cfg)
+    if current_state in {"printing", "resuming"}:
+        print(
+            f"[PrinterControl] Ultimaker resume took effect despite HTTP {r.status_code}"
+        )
+        return
+
+    print(f"[PrinterControl] Ultimaker resume failed: HTTP {r.status_code}")
 
 
 def _stop_octoprint(cfg: dict) -> None:
