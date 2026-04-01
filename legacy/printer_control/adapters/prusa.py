@@ -3,7 +3,7 @@ import time
 import requests
 from requests.auth import HTTPDigestAuth
 
-from printer_control.ports import PrinterPort
+from legacy.printer_control.ports import PrinterPort
 
 
 class PrusaAdapter(PrinterPort):

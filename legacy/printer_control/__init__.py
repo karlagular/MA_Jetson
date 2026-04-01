@@ -9,7 +9,7 @@ Public functions (backward-compatible):
 
 import threading
 
-from printer_control.factory import create_printer_adapter
+from legacy.printer_control.factory import create_printer_adapter
 
 
 def check_printer_status(machine: str) -> bool:

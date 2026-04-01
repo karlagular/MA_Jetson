@@ -1,6 +1,6 @@
 import requests
 
-from printer_control.ports import PrinterPort
+from legacy.printer_control.ports import PrinterPort
 
 
 class KlipperAdapter(PrinterPort):

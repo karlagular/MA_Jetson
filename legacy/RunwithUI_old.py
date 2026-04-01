@@ -15,7 +15,7 @@ from PyQt5.QtCore import QTimer, Qt
 from typing import Optional, Tuple
 from ultralytics import YOLO
 import torch
-import printer_control
+import legacy.printer_control as printer_control
 
 class VideoProcessor:
     def __init__(self, camera_id = 0, width: int = 640, height: int = 480):

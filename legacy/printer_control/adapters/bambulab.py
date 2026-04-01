@@ -3,7 +3,7 @@ import ssl
 import threading
 import time
 
-from printer_control.ports import PrinterPort
+from legacy.printer_control.ports import PrinterPort
 
 _ACTIVE_STATES = {"RUNNING", "PAUSE", "PAUSED", "PAUSING", "RESUMING", "PREPARE"}
 _PAUSED_STATES = {"PAUSE", "PAUSED", "PAUSING"}

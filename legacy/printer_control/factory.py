@@ -1,15 +1,15 @@
 import json
 import os
 
-from printer_control.ports import PrinterPort
+from legacy.printer_control.ports import PrinterPort
 
-_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "machine_config.json")
+_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "machine_config.json")
 
 _ADAPTER_MAP = {
-    "RatRig":    "printer_control.adapters.klipper.KlipperAdapter",
-    "Bambulab":  "printer_control.adapters.bambulab.BambulabAdapter",
-    "Prusa":     "printer_control.adapters.prusa.PrusaAdapter",
-    "Ultimaker": "printer_control.adapters.ultimaker.UltimakerAdapter",
+    "RatRig":    "legacy.printer_control.adapters.klipper.KlipperAdapter",
+    "Bambulab":  "legacy.printer_control.adapters.bambulab.BambulabAdapter",
+    "Prusa":     "legacy.printer_control.adapters.prusa.PrusaAdapter",
+    "Ultimaker": "legacy.printer_control.adapters.ultimaker.UltimakerAdapter",
 }
 
 
