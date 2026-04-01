@@ -8,7 +8,7 @@ from domain.policy import MofNPolicy
 
 class TestMofNPolicy:
     def test_does_not_trigger_below_threshold(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0)
+        p = MofNPolicy(m=3, n=5)
         # Only 2 detections in 5 frames -> no trigger
         assert not p.update(1, 1.0)
         assert not p.update(1, 2.0)
@@ -17,25 +17,25 @@ class TestMofNPolicy:
         assert not p.update(0, 5.0)
 
     def test_triggers_at_threshold(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0)
+        p = MofNPolicy(m=3, n=5)
         p.update(1, 1.0)
         p.update(1, 2.0)
         result = p.update(1, 3.0)
         assert result is True
 
-    def test_cooldown_prevents_retrigger(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=10.0)
+    def test_baseline_suppresses_retrigger(self):
+        p = MofNPolicy(m=3, n=5)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # triggers
 
-        # Baseline is now 1 — same count is suppressed regardless of cooldown
+        # Baseline is now 1 — same count is suppressed
         p.reset()  # simulate alarm dismissal
         p.update(1, 4.0)
         assert p.update(1, 5.0) is False
 
     def test_triggers_again_after_disappearance(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0, disappear_frames=3)
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # triggers, baseline=1
@@ -56,7 +56,7 @@ class TestMofNPolicy:
         assert p.update(1, 11.0) is True  # new alarm
 
     def test_same_person_suppressed_after_dismissal(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0, disappear_frames=3)
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # triggers, baseline=1
@@ -67,7 +67,7 @@ class TestMofNPolicy:
             assert p.update(1, float(t)) is False
 
     def test_new_additional_person_triggers(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0, disappear_frames=3)
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
         # First person triggers alarm
         p.update(1, 1.0)
         p.update(1, 2.0)
@@ -88,7 +88,7 @@ class TestMofNPolicy:
     def test_disappear_grace_period(self):
         """Person vanishes for only 2 frames (< disappear_frames=3) then reappears.
         Baseline should NOT clear — still suppressed."""
-        p = MofNPolicy(m=3, n=5, cooldown_s=0, disappear_frames=3)
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # baseline=1
@@ -103,7 +103,7 @@ class TestMofNPolicy:
         assert p.update(1, 8.0) is False
 
     def test_reset_clears_window_not_baseline(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0)
+        p = MofNPolicy(m=3, n=5)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # baseline=1
@@ -115,7 +115,7 @@ class TestMofNPolicy:
         assert not p.update(1, 6.0)
 
     def test_sliding_window(self):
-        p = MofNPolicy(m=3, n=5, cooldown_s=0)
+        p = MofNPolicy(m=3, n=5)
         # Fill: 1 1 0 0 0 -> 2 of 5 -> no trigger
         for i, det in enumerate([1, 1, 0, 0, 0]):
             result = p.update(det, float(i))
@@ -127,3 +127,38 @@ class TestMofNPolicy:
         assert p.update(1, 6.0) is False
         # Add 1 -> window is 0 0 1 1 1 -> 3 of 5 -> triggers
         assert p.update(1, 7.0) is True
+
+    def test_partial_disappearance_lowers_baseline(self):
+        """Two persons trigger alarm (baseline=2). One leaves for 3 frames
+        (count=1). Baseline drops to 1. A new second person (count=2)
+        triggers a fresh alarm."""
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
+        # Two persons detected for 3 frames -> alarm
+        p.update(2, 1.0)
+        p.update(2, 2.0)
+        assert p.update(2, 3.0) is True  # baseline=2
+        p.reset()
+
+        # One leaves: count drops to 1 for 3 frames
+        assert p.update(1, 4.0) is False  # below_run=1
+        assert p.update(1, 5.0) is False  # below_run=2
+        assert p.update(1, 6.0) is False  # below_run=3 -> baseline drops to 1
+
+        # New second person appears (count=2 > baseline=1)
+        assert p.update(2, 7.0) is True  # new alarm
+
+    def test_partial_disappearance_grace_holds(self):
+        """Two persons, one leaves for only 2 frames (< 3). Baseline stays 2,
+        so same count=2 coming back is still suppressed."""
+        p = MofNPolicy(m=3, n=5, disappear_frames=3)
+        p.update(2, 1.0)
+        p.update(2, 2.0)
+        assert p.update(2, 3.0) is True  # baseline=2
+        p.reset()
+
+        # Brief partial disappearance: only 2 frames at count=1
+        assert p.update(1, 4.0) is False
+        assert p.update(1, 5.0) is False
+        # Back to 2 before grace expires — baseline still 2, suppressed
+        assert p.update(2, 6.0) is False
+        assert p.update(2, 7.0) is False

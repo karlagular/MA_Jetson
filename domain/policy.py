@@ -23,43 +23,46 @@ class MofNPolicy(AlarmPolicy):
 
     After an alarm is dismissed the policy remembers how many persons were
     in frame (the *baseline*).  The same count does NOT re-trigger.  Only a
-    **new** person (count goes above baseline) or a **re-appearance** (count
-    drops to 0 for ``disappear_frames`` consecutive frames, then rises) can
-    trigger a new alarm.
+    **new** person (count goes above baseline) or a **re-appearance** after
+    a disappearance can trigger a new alarm.
+
+    A *disappearance* is any drop below the baseline that persists for
+    ``disappear_frames`` consecutive frames.  Even a partial drop counts
+    (e.g. 2 -> 1 for 3 frames lowers the baseline to 1, so a new second
+    person can trigger again).
     """
 
     def __init__(
         self,
         m: int = 3,
         n: int = 5,
-        cooldown_s: float = 10.0,
-        disappear_frames: int = 3,
+        disappear_frames: int = 5,
     ) -> None:
         self._m = m
         self._n = n
-        self._cooldown_s = cooldown_s
         self._disappear_frames = disappear_frames
 
         self._window: deque[bool] = deque(maxlen=n)
-        self._last_trigger_time: float | None = None
 
         # Suppression state: after alarm dismissal, how many persons were
-        # acknowledged.  Stays active until all persons disappear.
+        # acknowledged.  Adjusted down when count stays below it.
         self._baseline_count: int = 0
-        self._zero_run: int = 0  # consecutive frames with 0 persons
+        self._below_run: int = 0  # consecutive frames with count < baseline
 
     # ------------------------------------------------------------------
     def update(self, person_count: int, now: float) -> bool:
         detected = person_count > 0
         self._window.append(detected)
 
-        # Track disappearance: consecutive zero-count frames
-        if person_count == 0:
-            self._zero_run += 1
-            if self._zero_run >= self._disappear_frames:
-                self._baseline_count = 0
+        # Track disappearance: consecutive frames below baseline
+        if person_count < self._baseline_count:
+            self._below_run += 1
+            if self._below_run >= self._disappear_frames:
+                # Adjust baseline down to current level
+                self._baseline_count = person_count
+                self._below_run = 0
         else:
-            self._zero_run = 0
+            self._below_run = 0
 
         # Suppress if count is at or below the acknowledged baseline
         if person_count <= self._baseline_count:
@@ -69,17 +72,10 @@ class MofNPolicy(AlarmPolicy):
         if sum(self._window) < self._m:
             return False
 
-        # Cooldown gate
-        if self._last_trigger_time is not None:
-            if (now - self._last_trigger_time) < self._cooldown_s:
-                return False
-
-        self._last_trigger_time = now
         self._baseline_count = person_count
         return True
 
     def reset(self) -> None:
         self._window.clear()
-        self._last_trigger_time = None
-        # Do NOT clear baseline/zero_run — the suppression state must survive
+        # Do NOT clear baseline/below_run — the suppression state must survive
         # across alarm dismissals so the same person doesn't re-trigger.

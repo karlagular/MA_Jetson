@@ -98,7 +98,7 @@ class TestPipelineReplay:
         light = DummyLight()
         ui = FakeUi()
         logger = MemoryLogger()
-        policy = MofNPolicy(m=3, n=5, cooldown_s=0)
+        policy = MofNPolicy(m=3, n=5)
         sm = AlarmStateMachine()
 
         orchestrator = AlarmOrchestrator(
@@ -135,7 +135,7 @@ class TestPipelineReplay:
         light = DummyLight()
         ui = FakeUi()
         logger = MemoryLogger()
-        policy = MofNPolicy(m=3, n=5, cooldown_s=0)
+        policy = MofNPolicy(m=3, n=5)
         sm = AlarmStateMachine()
 
         orchestrator = AlarmOrchestrator(

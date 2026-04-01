@@ -19,7 +19,6 @@ class ExperimentConfig:
     model_path: str = "yolo11n-seg.pt"
     alarm_m: int = 3
     alarm_n: int = 5
-    cooldown_s: float = 10.0
     rtsp_url: str = "rtsp://192.168.178.68:8554/cam"
 
 

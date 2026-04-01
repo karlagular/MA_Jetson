@@ -110,7 +110,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     logger: EventLoggerPort = JsonlLogger(session_dir)
 
     # Domain
-    policy = MofNPolicy(m=cfg.alarm_m, n=cfg.alarm_n, cooldown_s=cfg.cooldown_s)
+    policy = MofNPolicy(m=cfg.alarm_m, n=cfg.alarm_n)
     sm = AlarmStateMachine()
 
     # UI (must be created in Qt thread — fine, wire() is always called from main)
