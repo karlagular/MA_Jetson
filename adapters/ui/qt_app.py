@@ -73,7 +73,7 @@ class ExperimentConfigDialog(QDialog):
         self.videostream_combo.addItems(["USB", "RTSP", "CSI"])
 
         self.kamera_combo = QComboBox()
-        self.kamera_combo.addItems(["USB Basler BW Fix", "RTSP rpi cam 3 wide", "USB Webcam Logitech"])
+        self.kamera_combo.addItems(["USB Basler BW Fix", "RTSP rpi cam 3 wide", "USB Webcam Logitech", "Replay Video"])
 
         self.zachse_combo = QComboBox()
         self.zachse_combo.addItems(["Druckkopf", "Druckbett"])

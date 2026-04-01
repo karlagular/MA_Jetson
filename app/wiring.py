@@ -36,6 +36,11 @@ class _SystemClock(ClockPort):
 # Factory helpers
 # ------------------------------------------------------------------
 
+def _make_inference(cfg: ExperimentConfig) -> InferencePort:
+    from adapters.inference.ultralytics_yolo import UltralyticsYOLO
+    return UltralyticsYOLO(cfg.model_path, conf=0.5)
+
+
 def _make_camera(cfg: ExperimentConfig) -> CameraPort:
     kamera = cfg.kamera
     if kamera == "USB Basler BW Fix":
@@ -51,6 +56,9 @@ def _make_camera(cfg: ExperimentConfig) -> CameraPort:
             "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
         )
         return RTSPGStreamerCamera(pipeline)
+    elif kamera == "Replay Video":
+        from adapters.camera.replay_video import ReplayVideoCamera
+        return ReplayVideoCamera(cfg.video_path, loop=True)
     else:
         from adapters.camera.opencv_usb import OpenCVUSBCamera
         return OpenCVUSBCamera(device_id=0)
@@ -94,7 +102,6 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     """
     import os
     from adapters.alarm_light.dummy_light import DummyLight
-    from adapters.inference.ultralytics_yolo import UltralyticsYOLO
     from adapters.logging.jsonl_logger import JsonlLogger
     from adapters.ui.qt_app import QtVideoWindow
 
@@ -103,7 +110,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
 
     # Ports / adapters
     camera = _make_camera(cfg)
-    inference = UltralyticsYOLO(cfg.model_path, conf=0.5)
+    inference = _make_inference(cfg)
     printer = _make_printer(cfg.maschine, machine_configs)
     alarm_light: AlarmLightPort = DummyLight()
     session_dir = os.path.join("experimental_results", session_id)
