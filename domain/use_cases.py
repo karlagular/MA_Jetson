@@ -42,6 +42,7 @@ class AlarmOrchestrator:
         self._ui = ui
         self._logger = logger
         self._clock = clock
+        self._alarm_frame_index: int = -1
 
     # ------------------------------------------------------------------
     # Called every frame by the pipeline
@@ -56,6 +57,7 @@ class AlarmOrchestrator:
             return  # already handling an alarm
 
         self._sm.trigger_alarm()
+        self._alarm_frame_index = packet.index
         print(f"[ALARM] Person alarm triggered at frame {packet.index}")
         self._log_transition(packet.index, "MONITORING", "ALARMED", "policy_triggered")
         self._sm.begin_pause()
@@ -69,10 +71,12 @@ class AlarmOrchestrator:
     # User actions (called from UI adapter)
     # ------------------------------------------------------------------
     def on_user_continue(self) -> None:
+        self._log_transition(self._alarm_frame_index, "AWAITING_USER", "RESUMING", "user_continue")
         self._sm.on_user_continue()
         threading.Thread(target=self._resume_and_finish, daemon=True).start()
 
     def on_user_stop(self) -> None:
+        self._log_transition(self._alarm_frame_index, "AWAITING_USER", "CANCELING", "user_stop")
         self._sm.on_user_stop()
         threading.Thread(target=self._cancel_and_finish, daemon=True).start()
 
@@ -100,8 +104,10 @@ class AlarmOrchestrator:
             self._light.turn_off()
             self._policy.reset()
             self._sm.on_action_done()
+            self._log_transition(self._alarm_frame_index, "RESUMING", "MONITORING", "resume_done")
         except Exception as exc:
             self._sm.on_fault(str(exc))
+            self._log_transition(self._alarm_frame_index, "RESUMING", "FAULT", str(exc))
 
     def _cancel_and_finish(self) -> None:
         try:
@@ -109,8 +115,10 @@ class AlarmOrchestrator:
             self._light.turn_off()
             self._policy.reset()
             self._sm.on_action_done()
+            self._log_transition(self._alarm_frame_index, "CANCELING", "MONITORING", "cancel_done")
         except Exception as exc:
             self._sm.on_fault(str(exc))
+            self._log_transition(self._alarm_frame_index, "CANCELING", "FAULT", str(exc))
 
     # ------------------------------------------------------------------
     def _log_transition(self, frame_index: int, from_s: str, to_s: str, action: str) -> None:
