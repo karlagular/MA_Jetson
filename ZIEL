@@ -34,6 +34,10 @@ del sistema:
 	- postprocess
 	- output
 	- display
+* Reaccion
+	- de alarma
+	- de mandar continua/para
+	- de confirmar comando
 
 TO DOs:
 
@@ -43,7 +47,6 @@ TO DOs:
 * PIPELINE:
 	- PrusaCoreOne Kamera auf stream greifen??
 	- Latenz MQTT Frequenz
-	- al seleccionar Stop Printing decidir si se cierra el programa, se congelan los botones o que pasa
 	- test detener impresion en IPH:
         * Octoprint API
 * POSTPROCESSING:
