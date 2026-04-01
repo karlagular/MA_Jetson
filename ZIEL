@@ -19,7 +19,7 @@ Was muss das Pipeline können?
 
 Que quiero medir?
 del modelo:
-* mAP con fotos de internet de piezas normales vs piezas con layer shift
+* NADA
 
 del sistema:
 * Latencia
@@ -34,8 +34,6 @@ del sistema:
 	- postprocess
 	- output
 	- display
-* mAP validacion con 100 fotos anotadas de internet
-* mAP experimental (COMO??)
 
 TO DOs:
 
