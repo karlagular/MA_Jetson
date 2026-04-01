@@ -57,11 +57,15 @@ def _make_camera(cfg: ExperimentConfig) -> CameraPort:
 
 
 def _make_printer(machine_name: str, machine_configs: dict) -> PrinterPort:
+    key = machine_name.lower()
+    if key == "fake printer":
+        from adapters.printer.fake_printer import FakePrinter
+        return FakePrinter()
+
     cfg = machine_configs.get(machine_name)
     if cfg is None:
         raise ValueError(f"No config for printer '{machine_name}' in machine_config.json")
 
-    key = machine_name.lower()
     if key == "ratrig":
         from adapters.printer.klipper_moonraker import KlipperAdapter
         return KlipperAdapter(cfg)

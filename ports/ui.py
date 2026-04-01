@@ -1,9 +1,17 @@
 """Port: user interface."""
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
+
+
+class ConfigUiPort(ABC):
+    """One-shot config dialog — shown before the main window exists."""
+
+    @abstractmethod
+    def request_session_config(self):
+        """Ask the user for session config. Returns an ExperimentConfig or None if cancelled."""
 
 
 class UiPort(ABC):
