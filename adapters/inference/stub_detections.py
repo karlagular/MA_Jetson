@@ -31,6 +31,7 @@ class StubDetections(InferencePort):
                 boxes=[box],
                 masks=None,
                 person_detected=True,
+                person_count=1,
                 class_names={0: "person"},
             )
 

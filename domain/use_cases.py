@@ -48,7 +48,7 @@ class AlarmOrchestrator:
     # ------------------------------------------------------------------
     def handle_detection(self, result: DetectionResult, packet: FramePacket) -> None:
         now = self._clock.perf_counter()
-        should_alarm = self._policy.update(result.person_detected, now)
+        should_alarm = self._policy.update(result.person_count, now)
 
         if not should_alarm:
             return

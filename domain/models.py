@@ -24,6 +24,7 @@ class DetectionResult:
     boxes: List[BBox] = field(default_factory=list)
     masks: Optional[List[np.ndarray]] = None
     person_detected: bool = False
+    person_count: int = 0
     class_names: Dict[int, str] = field(default_factory=dict)
 
 
