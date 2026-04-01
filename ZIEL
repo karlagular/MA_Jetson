@@ -43,19 +43,11 @@ TO DOs:
     -
 
 * PIPELINE:
-	- Umstrukturieren
 	- PrusaCoreOne Kamera auf stream greifen??
 	- Latenz MQTT Frequenz
 	- al seleccionar Stop Printing decidir si se cierra el programa, se congelan los botones o que pasa
-    - de acuerdo a variables en la mascara del gui configurar fuente de video
-	- hacer prueba del modelo de stutzstrukturen en el instituto
-	- devolver output en formato deseado (MQTT/ OPC UA)
-	- test detener impresion:
+	- test detener impresion en IPH:
         * Octoprint API
-		* DONE: Klipper API (Ratrig)
-        * DONE: Bambu MQTT
-        * DONE: Ultimaker API
-        * DONE: Prusa STEP
 * POSTPROCESSING:
 	- convertir log txt en cvs, excel o pandas
 	- hacer graficas
@@ -64,12 +56,7 @@ TO DOs:
 	- trigger senal de pausar el proceso & reanudar
 		* y/o indicar que se envio senal para pausar 
 		* y/o indicar que esta en pausa de acuerdo al feedabk/senal proveniente de la impresora
-	- luz de alarma roja (probs USB) que se apaga cuando el usuario responde (continuar o parar)
-	- maybe senal sonora (buzzer)
-	- current e2e latency (maybe diferenciar entre modo experimento y modo user?)
-* CAD:
-	- cableado?
-	- como fijamos alarma luminica y sonora?
+	- luz de alarma roja que se apaga cuando el usuario responde (continuar o parar)
 * ORGA:
 	- mandar link de DoE a Max
 	- revisar y etablecer las variables de los experimentos: HW: STREAM+CAMERA (USB + [Basler, SW, Winkerl?], RTSP + [Rpicam v3, Farbe, Winkel 120°]); EXP: Beleuchtung(immer an), enclosure, Vibration, Bewegung in Z(immer Druckbett), Kamerawinkel, Drucker (Bambu, Ultimaker, CoreOne)
