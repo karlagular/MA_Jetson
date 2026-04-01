@@ -13,6 +13,7 @@ class State(Enum):
     AWAITING_USER = auto()
     RESUMING = auto()
     CANCELING = auto()
+    STOPPED = auto()
     FAULT = auto()
 
 
@@ -23,7 +24,8 @@ _TRANSITIONS = {
     State.PAUSING_PRINTER:  {State.AWAITING_USER, State.FAULT},
     State.AWAITING_USER:    {State.RESUMING, State.CANCELING, State.FAULT},
     State.RESUMING:         {State.MONITORING, State.FAULT},
-    State.CANCELING:        {State.MONITORING, State.FAULT},
+    State.CANCELING:        {State.STOPPED, State.FAULT},
+    State.STOPPED:          set(),  # terminal state — no transitions out
     State.FAULT:            {State.MONITORING},
 }
 
@@ -85,8 +87,12 @@ class AlarmStateMachine:
         self._go(State.CANCELING)
 
     def on_action_done(self) -> None:
-        """RESUMING | CANCELING -> MONITORING"""
+        """RESUMING -> MONITORING"""
         self._go(State.MONITORING)
+
+    def on_cancel_done(self) -> None:
+        """CANCELING -> STOPPED"""
+        self._go(State.STOPPED)
 
     def on_fault(self, error: str) -> None:
         """Any -> FAULT"""

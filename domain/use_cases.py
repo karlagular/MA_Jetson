@@ -48,6 +48,9 @@ class AlarmOrchestrator:
     # Called every frame by the pipeline
     # ------------------------------------------------------------------
     def handle_detection(self, result: DetectionResult, packet: FramePacket) -> None:
+        if self._sm.current_state == State.STOPPED:
+            return  # print was cancelled — alarm system disabled
+
         now = self._clock.perf_counter()
         should_alarm = self._policy.update(result.person_count, now)
 
@@ -113,9 +116,8 @@ class AlarmOrchestrator:
         try:
             self._printer.stop()
             self._light.turn_off()
-            self._policy.reset()
-            self._sm.on_action_done()
-            self._log_transition(self._alarm_frame_index, "CANCELING", "MONITORING", "cancel_done")
+            self._sm.on_cancel_done()
+            self._log_transition(self._alarm_frame_index, "CANCELING", "STOPPED", "cancel_done")
         except Exception as exc:
             self._sm.on_fault(str(exc))
             self._log_transition(self._alarm_frame_index, "CANCELING", "FAULT", str(exc))

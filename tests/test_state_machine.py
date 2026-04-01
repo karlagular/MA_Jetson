@@ -32,8 +32,8 @@ class TestAlarmStateMachine:
         sm.on_pause_complete()
         sm.on_user_stop()
         assert sm.current_state == State.CANCELING
-        sm.on_action_done()
-        assert sm.current_state == State.MONITORING
+        sm.on_cancel_done()
+        assert sm.current_state == State.STOPPED
 
     def test_fault_from_pausing(self):
         sm = AlarmStateMachine()
@@ -82,3 +82,27 @@ class TestAlarmStateMachine:
         sm = AlarmStateMachine()
         with pytest.raises(InvalidTransition):
             sm.on_user_continue()
+
+    def test_stopped_is_terminal(self):
+        """STOPPED allows no outgoing transitions."""
+        sm = AlarmStateMachine()
+        sm.trigger_alarm()
+        sm.begin_pause()
+        sm.on_pause_complete()
+        sm.on_user_stop()
+        sm.on_cancel_done()
+        assert sm.current_state == State.STOPPED
+        with pytest.raises(InvalidTransition):
+            sm.trigger_alarm()
+        with pytest.raises(InvalidTransition):
+            sm.on_fault("error")
+
+    def test_canceling_goes_to_stopped_not_monitoring(self):
+        sm = AlarmStateMachine()
+        sm.trigger_alarm()
+        sm.begin_pause()
+        sm.on_pause_complete()
+        sm.on_user_stop()
+        assert sm.current_state == State.CANCELING
+        with pytest.raises(InvalidTransition):
+            sm.on_action_done()  # CANCELING -> MONITORING no longer valid
