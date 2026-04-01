@@ -43,14 +43,18 @@ TO DOs:
     -
 
 * PIPELINE:
+	- Umstrukturieren
+	- PrusaCoreOne Kamera auf stream greifen??
+	- Latenz MQTT Frequenz
 	- al seleccionar Stop Printing decidir si se cierra el programa, se congelan los botones o que pasa
     - de acuerdo a variables en la mascara del gui configurar fuente de video
 	- hacer prueba del modelo de stutzstrukturen en el instituto
 	- devolver output en formato deseado (MQTT/ OPC UA)
 	- test detener impresion:
         * Octoprint API
-        * Bambu MQTT
-        * Ultimaker API
+		* DONE: Klipper API (Ratrig)
+        * DONE: Bambu MQTT
+        * DONE: Ultimaker API
         * DONE: Prusa STEP
 * POSTPROCESSING:
 	- convertir log txt en cvs, excel o pandas
@@ -67,12 +71,8 @@ TO DOs:
 	- cableado?
 	- como fijamos alarma luminica y sonora?
 * ORGA:
-	- presionar a Johannes por el modelo de inferencia y preguntar como funciona su ratrig headless
 	- mandar link de DoE a Max
-	- Nutzwertanalyse!! 
-		* Como se hace? (con fuentes)
-		* Hacerlo e insertarlo al documento de word
-	- revisar y etablecer las variables de los experimentos: HW: STREAM, CAMERA, COMPUTER; EXP: Beleuchtung, enclosure, Vibration, Bewegung in Z, Kamerawinkel
+	- revisar y etablecer las variables de los experimentos: HW: STREAM+CAMERA (USB + [Basler, SW, Winkerl?], RTSP + [Rpicam v3, Farbe, Winkel 120°]); EXP: Beleuchtung(immer an), enclosure, Vibration, Bewegung in Z(immer Druckbett), Kamerawinkel, Drucker (Bambu, Ultimaker, CoreOne)
 	- determinar otros factores a documentar (temperatura)
 	- establecer formato de output del sistema (json, opcua,...)
 	- crear dataset para evaluar el modelo (colectar y labelear (COCO igwas) imagenes)
