@@ -3,3 +3,5 @@ machine_config.json
 basler_test_shot/
 push_to_github.txt
 /*.jpg
+*.py[cod]
+__pycache__/
