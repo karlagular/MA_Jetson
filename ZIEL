@@ -8,9 +8,9 @@ Was muss das Pipeline können?
 	- Realizar la inferencia
 	- Visualizar el resultado de la inferencia y las configs del experimento
 	- Senalizar alarma en caso de deteccion de error
-	- Guardar frames cada 5s? identificando configs de experimento
 	- Guardar frame en caso de deteccion de error identificando configs de experimento
 	- Medir latencia(s)
+	- Guardar periodicamente las stats deuso de cpu, gpu, temperatuira, ram
 	- Evaluar el rendimiento de la inferencia
 	- Guardar la evaluacion identificando configs de experimento
 	- Terminar el experimento al recibir una senal
