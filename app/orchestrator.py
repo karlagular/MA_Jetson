@@ -2,133 +2,165 @@
 
 from __future__ import annotations
 
-import threading
+from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
-from domain.models import AlarmEvent, DetectionResult, FramePacket
+import numpy as np
+
+from domain.models import DetectionResult, FramePacket
 from domain.state_machine import AlarmStateMachine, State
 
 if TYPE_CHECKING:
     from domain.policy import AlarmPolicy
-    from ports.alarm_light import AlarmLightPort
     from ports.clock import ClockPort
-    from ports.logger import EventLoggerPort
-    from ports.printer import PrinterPort
-    from ports.ui import UiPort
+
+
+class Effect:
+    """Marker base class for actions produced by the orchestrator."""
+
+
+@dataclass
+class ShowAlarmEffect(Effect):
+    pass
+
+
+@dataclass
+class PausePrinterEffect(Effect):
+    frame_index: int
+
+
+@dataclass
+class ResumePrinterEffect(Effect):
+    frame_index: int
+
+
+@dataclass
+class StopPrinterEffect(Effect):
+    frame_index: int
+
+
+@dataclass
+class EnableAlarmButtonsEffect(Effect):
+    pass
+
+
+@dataclass
+class TurnLightOnEffect(Effect):
+    pass
+
+
+@dataclass
+class TurnLightOffEffect(Effect):
+    pass
+
+
+@dataclass
+class SaveFrameEffect(Effect):
+    frame: np.ndarray
+    label: str
+
+
+@dataclass
+class LogTransitionEffect(Effect):
+    frame_index: int
+    from_s: str
+    to_s: str
+    action: str
 
 
 class AlarmOrchestrator:
-    """Coordinates alarm logic across domain + ports.
-
-    All printer / light calls run on daemon threads so the
-    hot path (frame loop) is never blocked.
-    """
+    """Coordinates alarm logic and emits effects to be executed elsewhere."""
 
     def __init__(
         self,
         policy: AlarmPolicy,
         state_machine: AlarmStateMachine,
-        printer: PrinterPort,
-        alarm_light: AlarmLightPort,
-        ui: UiPort,
-        logger: EventLoggerPort,
         clock: ClockPort,
     ) -> None:
         self._policy = policy
         self._sm = state_machine
-        self._printer = printer
-        self._light = alarm_light
-        self._ui = ui
-        self._logger = logger
         self._clock = clock
         self._alarm_frame_index: int = -1
 
     # ------------------------------------------------------------------
     # Called every frame by the pipeline
     # ------------------------------------------------------------------
-    def handle_detection(self, result: DetectionResult, packet: FramePacket) -> None:
+    def handle_detection(self, result: DetectionResult, packet: FramePacket) -> List[Effect]:
         if self._sm.current_state == State.STOPPED:
-            return  # print was cancelled — alarm system disabled
+            return []  # print was cancelled — alarm system disabled
 
         now = self._clock.perf_counter()
         should_alarm = self._policy.update(result.person_count, now)
 
         if not should_alarm:
-            return
+            return []
         if self._sm.current_state != State.MONITORING:
-            return  # already handling an alarm
+            return []  # already handling an alarm
 
         self._sm.trigger_alarm()
         self._alarm_frame_index = packet.index
         print(f"[ALARM] Person alarm triggered at frame {packet.index}")
-        self._log_transition(packet.index, "MONITORING", "ALARMED", "policy_triggered")
         self._sm.begin_pause()
-        self._log_transition(packet.index, "ALARMED", "PAUSING_PRINTER", "begin_pause")
-        self._light.turn_on()
-        self._logger.save_frame(packet.frame, f"person_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-
-        threading.Thread(target=self._pause_and_await, args=(packet.index,), daemon=True).start()
+        return [
+            LogTransitionEffect(packet.index, "MONITORING", "ALARMED", "policy_triggered"),
+            LogTransitionEffect(packet.index, "ALARMED", "PAUSING_PRINTER", "begin_pause"),
+            TurnLightOnEffect(),
+            SaveFrameEffect(packet.frame, f"person_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            ShowAlarmEffect(),
+            PausePrinterEffect(packet.index),
+        ]
 
     # ------------------------------------------------------------------
     # User actions (called from UI adapter)
     # ------------------------------------------------------------------
-    def on_user_continue(self) -> None:
-        self._log_transition(self._alarm_frame_index, "AWAITING_USER", "RESUMING", "user_continue")
+    def on_user_continue(self) -> List[Effect]:
         self._sm.on_user_continue()
-        threading.Thread(target=self._resume_and_finish, daemon=True).start()
+        return [
+            LogTransitionEffect(self._alarm_frame_index, "AWAITING_USER", "RESUMING", "user_continue"),
+            ResumePrinterEffect(self._alarm_frame_index),
+        ]
 
-    def on_user_stop(self) -> None:
-        self._log_transition(self._alarm_frame_index, "AWAITING_USER", "CANCELING", "user_stop")
+    def on_user_stop(self) -> List[Effect]:
         self._sm.on_user_stop()
-        threading.Thread(target=self._cancel_and_finish, daemon=True).start()
+        return [
+            LogTransitionEffect(self._alarm_frame_index, "AWAITING_USER", "CANCELING", "user_stop"),
+            StopPrinterEffect(self._alarm_frame_index),
+        ]
 
     # ------------------------------------------------------------------
     # Background work
     # ------------------------------------------------------------------
-    def _pause_and_await(self, frame_index: int) -> None:
-        # Always show alarm window immediately; action buttons stay disabled
-        # until the printer pause has been confirmed.
-        self._ui.show_alarm(on_continue=self.on_user_continue, on_stop=self.on_user_stop)
+    def on_pause_completed(self, frame_index: int) -> List[Effect]:
+        self._sm.on_pause_complete()
+        return [
+            LogTransitionEffect(frame_index, "PAUSING_PRINTER", "AWAITING_USER", "pause_ok"),
+            EnableAlarmButtonsEffect(),
+        ]
 
-        try:
-            self._printer.pause()
-            self._sm.on_pause_complete()
-            self._log_transition(frame_index, "PAUSING_PRINTER", "AWAITING_USER", "pause_ok")
-            self._ui.enable_alarm_buttons()
-        except Exception as exc:
-            print(f"[ALARM] Printer pause failed: {exc}")
-            self._sm.on_fault(str(exc))
-            self._log_transition(frame_index, "PAUSING_PRINTER", "FAULT", str(exc))
+    def on_pause_failed(self, frame_index: int, error: str) -> List[Effect]:
+        self._sm.on_fault(error)
+        return [LogTransitionEffect(frame_index, "PAUSING_PRINTER", "FAULT", error)]
 
-    def _resume_and_finish(self) -> None:
-        try:
-            self._printer.resume()
-            self._light.turn_off()
-            self._policy.reset()
-            self._sm.on_action_done()
-            self._log_transition(self._alarm_frame_index, "RESUMING", "MONITORING", "resume_done")
-        except Exception as exc:
-            self._sm.on_fault(str(exc))
-            self._log_transition(self._alarm_frame_index, "RESUMING", "FAULT", str(exc))
+    def on_resume_completed(self) -> List[Effect]:
+        self._policy.reset()
+        self._sm.on_action_done()
+        return [
+            TurnLightOffEffect(),
+            LogTransitionEffect(self._alarm_frame_index, "RESUMING", "MONITORING", "resume_done"),
+        ]
 
-    def _cancel_and_finish(self) -> None:
-        try:
-            self._printer.stop()
-            self._light.turn_off()
-            self._sm.on_cancel_done()
-            self._log_transition(self._alarm_frame_index, "CANCELING", "STOPPED", "cancel_done")
-        except Exception as exc:
-            self._sm.on_fault(str(exc))
-            self._log_transition(self._alarm_frame_index, "CANCELING", "FAULT", str(exc))
+    def on_resume_failed(self, error: str) -> List[Effect]:
+        self._sm.on_fault(error)
+        return [LogTransitionEffect(self._alarm_frame_index, "RESUMING", "FAULT", error)]
 
-    # ------------------------------------------------------------------
-    def _log_transition(self, frame_index: int, from_s: str, to_s: str, action: str) -> None:
-        event = AlarmEvent(
-            timestamp=datetime.now().isoformat(),
-            frame_index=frame_index,
-            state_from=from_s,
-            state_to=to_s,
-            action=action,
-        )
-        self._logger.log_alarm(event)
+    def on_stop_completed(self) -> List[Effect]:
+        self._sm.on_cancel_done()
+        return [
+            TurnLightOffEffect(),
+            LogTransitionEffect(self._alarm_frame_index, "CANCELING", "STOPPED", "cancel_done"),
+        ]
+
+    def on_stop_failed(self, error: str) -> List[Effect]:
+        self._sm.on_fault(error)
+        return [LogTransitionEffect(self._alarm_frame_index, "CANCELING", "FAULT", error)]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.alarm_runtime import AlarmRuntime
 from app.config import ExperimentConfig, load_machine_config
 from app.orchestrator import AlarmOrchestrator
 from domain.policy import MofNPolicy
@@ -126,11 +127,15 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     orchestrator = AlarmOrchestrator(
         policy=policy,
         state_machine=sm,
+        clock=clock,
+    )
+
+    alarm_runtime = AlarmRuntime(
+        orchestrator=orchestrator,
         printer=printer,
         alarm_light=alarm_light,
         ui=ui,
         logger=logger,
-        clock=clock,
     )
 
     latency = LatencyTracker(clock=clock, window_size=60, session_id=session_id)
@@ -139,7 +144,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
         camera=camera,
         inference=inference,
         ui=ui,
-        orchestrator=orchestrator,
+        alarm_runtime=alarm_runtime,
         latency_tracker=latency,
         clock=clock,
     )

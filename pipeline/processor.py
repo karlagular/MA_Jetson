@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import numpy as np
-from app.orchestrator import AlarmOrchestrator
+from app.alarm_runtime import AlarmRuntime
 
 from domain.models import FramePacket
 from pipeline.latency import LatencyTracker
@@ -24,7 +24,7 @@ class PipelineRunner:
         camera: CameraPort,
         inference: InferencePort,
         ui: UiPort,
-        orchestrator: AlarmOrchestrator,
+        alarm_runtime: AlarmRuntime,
         latency_tracker: LatencyTracker,
         clock: ClockPort,
         colors: List[Tuple[int, int, int]] | None = None,
@@ -32,7 +32,7 @@ class PipelineRunner:
         self._camera = camera
         self._inference = inference
         self._ui = ui
-        self._orchestrator = orchestrator
+        self._alarm_runtime = alarm_runtime
         self._tracker = latency_tracker
         self._clock = clock
         self._colors = colors or np.random.randint(0, 255, size=(100, 3)).tolist()
@@ -54,7 +54,8 @@ class PipelineRunner:
         t3 = self._clock.perf_counter()
 
         packet = FramePacket(frame=frame, index=self._frame_index, timestamp_ns=int(t0 * 1e9))
-        self._orchestrator.handle_detection(result, packet)
+        self._alarm_runtime.handle_detection(result, packet)
+        self._alarm_runtime.process_pending_events()
         t4 = self._clock.perf_counter()
 
         self._ui.display_frame(overlay)
@@ -75,6 +76,7 @@ class PipelineRunner:
         self._inference.change_model(path)
 
     def shutdown(self) -> None:
+        self._alarm_runtime.shutdown()
         self._tracker.stop()
         self._tracker.save_log()
         self._camera.close()

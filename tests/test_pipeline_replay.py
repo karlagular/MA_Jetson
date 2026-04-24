@@ -9,6 +9,7 @@ from datetime import datetime
 from adapters.inference.stub_detections import StubDetections
 from adapters.printer.fake_printer import FakePrinter
 from adapters.alarm_light.dummy_light import DummyLight
+from app.alarm_runtime import AlarmRuntime
 from app.orchestrator import AlarmOrchestrator
 from domain.models import AlarmEvent
 from domain.policy import MofNPolicy
@@ -102,15 +103,24 @@ class TestPipelineReplay:
         sm = AlarmStateMachine()
 
         orchestrator = AlarmOrchestrator(
-            policy=policy, state_machine=sm, printer=printer,
-            alarm_light=light, ui=ui, logger=logger, clock=clock,
+            policy=policy,
+            state_machine=sm,
+            clock=clock,
+        )
+
+        alarm_runtime = AlarmRuntime(
+            orchestrator=orchestrator,
+            printer=printer,
+            alarm_light=light,
+            ui=ui,
+            logger=logger,
         )
 
         tracker = LatencyTracker(clock=clock, window_size=60, session_id="test")
 
         pipeline = PipelineRunner(
             camera=camera, inference=stub, ui=ui,
-            orchestrator=orchestrator, latency_tracker=tracker, clock=clock,
+            alarm_runtime=alarm_runtime, latency_tracker=tracker, clock=clock,
         )
 
         camera.open()
@@ -139,15 +149,24 @@ class TestPipelineReplay:
         sm = AlarmStateMachine()
 
         orchestrator = AlarmOrchestrator(
-            policy=policy, state_machine=sm, printer=printer,
-            alarm_light=light, ui=ui, logger=logger, clock=clock,
+            policy=policy,
+            state_machine=sm,
+            clock=clock,
+        )
+
+        alarm_runtime = AlarmRuntime(
+            orchestrator=orchestrator,
+            printer=printer,
+            alarm_light=light,
+            ui=ui,
+            logger=logger,
         )
 
         tracker = LatencyTracker(clock=clock, window_size=60, session_id="test2")
 
         pipeline = PipelineRunner(
             camera=camera, inference=stub, ui=ui,
-            orchestrator=orchestrator, latency_tracker=tracker, clock=clock,
+            alarm_runtime=alarm_runtime, latency_tracker=tracker, clock=clock,
         )
 
         camera.open()
