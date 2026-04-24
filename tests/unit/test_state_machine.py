@@ -1,8 +1,5 @@
 """Unit tests for domain.state_machine — AlarmStateMachine."""
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import pytest
 from domain.state_machine import AlarmStateMachine, InvalidTransition, State
 

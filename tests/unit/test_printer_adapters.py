@@ -1,11 +1,6 @@
 """Unit tests for printer adapters — isolated via mocked HTTP / MQTT."""
 
-import sys
-import os
 import json
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from unittest.mock import MagicMock, patch, call
 
 

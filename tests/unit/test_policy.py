@@ -1,8 +1,5 @@
 """Unit tests for domain.policy — MofNPolicy."""
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from domain.policy import MofNPolicy
 
 
