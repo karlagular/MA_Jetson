@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import numpy as np
+from app.orchestrator import AlarmOrchestrator
 
 from domain.models import FramePacket
-from domain.use_cases import AlarmOrchestrator
 from pipeline.latency import LatencyTracker
 from pipeline.steps import draw_overlay
 from ports.camera import CameraPort

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from app.config import ExperimentConfig, load_machine_config
+from app.orchestrator import AlarmOrchestrator
 from domain.policy import MofNPolicy
 from domain.state_machine import AlarmStateMachine
-from domain.use_cases import AlarmOrchestrator
 from pipeline.latency import LatencyTracker
 from pipeline.processor import PipelineRunner
 from ports.alarm_light import AlarmLightPort

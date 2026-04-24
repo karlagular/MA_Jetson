@@ -1,4 +1,4 @@
-"""Orchestrator — connects policy, state machine, and ports."""
+"""Application orchestration for alarm handling."""
 
 from __future__ import annotations
 

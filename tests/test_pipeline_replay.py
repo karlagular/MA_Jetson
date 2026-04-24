@@ -9,10 +9,10 @@ from datetime import datetime
 from adapters.inference.stub_detections import StubDetections
 from adapters.printer.fake_printer import FakePrinter
 from adapters.alarm_light.dummy_light import DummyLight
+from app.orchestrator import AlarmOrchestrator
 from domain.models import AlarmEvent
 from domain.policy import MofNPolicy
 from domain.state_machine import AlarmStateMachine, State
-from domain.use_cases import AlarmOrchestrator
 from pipeline.latency import LatencyTracker
 from pipeline.processor import PipelineRunner
 from pipeline.steps import draw_overlay
