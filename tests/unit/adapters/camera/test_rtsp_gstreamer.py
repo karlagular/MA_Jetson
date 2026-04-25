@@ -1,4 +1,20 @@
-"""Unit tests for RTSPGStreamerCamera."""
+"""
+Unit tests for adapters.camera.rtsp_gstreamer.RTSPGStreamerCamera.
+
+Verifies the GStreamer-backed RTSP camera adapter using a mocked
+cv2.VideoCapture so no live RTSP stream or GStreamer pipeline is needed.
+
+Coverage:
+  - open() passes the pipeline string and CAP_GSTREAMER backend to
+    cv2.VideoCapture.
+  - open() returns False when the pipeline cannot be opened.
+  - read_frame() returns the frame on success and (False, None) when closed.
+  - close() releases the underlying capture handle.
+
+Usage:
+    pytest tests/unit/adapters/camera/test_rtsp_gstreamer.py
+    pytest tests/unit/adapters/camera/test_rtsp_gstreamer.py -v
+"""
 
 from unittest.mock import MagicMock, patch
 

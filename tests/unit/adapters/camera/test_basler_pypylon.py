@@ -1,4 +1,21 @@
-"""Unit tests for BaslerPylonCamera."""
+"""
+Unit tests for adapters.camera.basler_pypylon.BaslerPylonCamera.
+
+Uses a fully synthetic pypylon environment (built by _build_fake_pylon_env)
+injected via sys.modules so the Basler SDK (pypylon) does not need to be
+installed and no physical Basler camera is required.
+
+Coverage:
+  - open() returns False when pypylon is missing or no devices are found.
+  - Serial-number filtering selects the correct device.
+  - read_frame() rotates the image and releases the grab result.
+  - read_frame() returns (False, None) on grab failure or when not grabbing.
+  - close() calls StopGrabbing/Close exactly once and is idempotent.
+
+Usage:
+    pytest tests/unit/adapters/camera/test_basler_pypylon.py
+    pytest tests/unit/adapters/camera/test_basler_pypylon.py -v
+"""
 
 import builtins
 import types

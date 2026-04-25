@@ -1,4 +1,23 @@
-"""Unit tests for JsonlLogger."""
+"""
+Unit tests for adapters.logging.jsonl_logger.JsonlLogger.
+
+Verifies the JSONL-based event logger that persists alarm events, frame
+snapshots, and latency measurements to disk.
+
+Coverage:
+  - __init__ creates the session directory and sets the events file path.
+  - log_alarm appends one JSON line per AlarmEvent to events.jsonl.
+  - save_frame calls cv2.imwrite with the correct path and frame data.
+  - save_latency_log writes a CSV-style header + one row per record to
+    latency_log.txt.
+
+Tests use pytest's tmp_path fixture; cv2.imwrite is patched so no display
+or filesystem write to /tmp is needed beyond text files.
+
+Usage:
+    pytest tests/unit/adapters/logging/test_jsonl_logger.py
+    pytest tests/unit/adapters/logging/test_jsonl_logger.py -v
+"""
 
 import json
 from unittest.mock import patch

@@ -1,3 +1,14 @@
+"""
+Quick YOLO inference test script.
+
+Runs a YOLO model (default: best.pt) on a given image or video source and
+prints detection results to stdout. For local image sources, it also saves an
+annotated copy ([stem]-result.jpg) with bounding boxes and segmentation masks
+drawn on the original image.
+
+Usage:
+    python yolotest.py [--model PATH] [--source PATH_OR_URL]
+"""
 from pathlib import Path
 import argparse
 

@@ -1,4 +1,25 @@
-"""Unit tests for UltralyticsYOLO adapter."""
+"""
+Unit tests for adapters.inference.ultralytics_yolo.UltralyticsYOLO.
+
+Verifies the Ultralytics YOLO inference adapter using a mocked YOLO model
+so no model weights file or GPU is required.
+
+Coverage:
+  - Device selection: uses "cuda" when torch.cuda.is_available() is True,
+    falls back to "cpu" otherwise.
+  - predict() with no boxes returns an empty DetectionResult
+    (person_detected=False, person_count=0).
+  - predict() correctly extracts bounding boxes, class names, and counts
+    the number of "person" detections.
+  - Segmentation masks are extracted and converted to numpy arrays when
+    present in the model output.
+  - change_model() reloads the model from a new path and moves it to the
+    correct device.
+
+Usage:
+    pytest tests/unit/adapters/inference/test_ultralytics_yolo.py
+    pytest tests/unit/adapters/inference/test_ultralytics_yolo.py -v
+"""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch

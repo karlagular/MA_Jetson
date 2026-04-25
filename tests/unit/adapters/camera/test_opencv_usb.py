@@ -1,4 +1,17 @@
-"""Unit tests for OpenCVUSBCamera."""
+"""
+Unit tests for adapters.camera.opencv_usb.OpenCVUSBCamera.
+
+Verifies the OpenCV USB camera adapter using a mocked cv2.VideoCapture so
+no physical camera is required:
+  - open() sets the requested resolution via CAP_PROP_FRAME_WIDTH/HEIGHT.
+  - open() returns False when the device cannot be opened.
+  - read_frame() returns the frame on success and (False, None) before open.
+  - close() releases the capture handle and is safely idempotent.
+
+Usage:
+    pytest tests/unit/adapters/camera/test_opencv_usb.py
+    pytest tests/unit/adapters/camera/test_opencv_usb.py -v
+"""
 
 from unittest.mock import MagicMock, patch
 

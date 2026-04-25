@@ -1,4 +1,20 @@
-"""Unit tests for ReplayVideoCamera."""
+"""
+Unit tests for adapters.camera.replay_video.ReplayVideoCamera.
+
+Verifies offline video replay using a mocked cv2.VideoCapture; no video
+file is needed on disk.
+
+Coverage:
+  - open() returns False when the file cannot be opened.
+  - read_frame() succeeds and returns the frame array.
+  - At end-of-file with loop=False: returns (False, None) without rewinding.
+  - At end-of-file with loop=True: seeks back to frame 0 and retries.
+  - close() releases the capture handle.
+
+Usage:
+    pytest tests/unit/adapters/camera/test_replay_video.py
+    pytest tests/unit/adapters/camera/test_replay_video.py -v
+"""
 
 from unittest.mock import MagicMock, call, patch
 
