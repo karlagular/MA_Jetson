@@ -42,11 +42,11 @@ del sistema:
 TO DOs:
 
 URGENTE:
-*prabar systema una vez con Basler camera y modelo general
-	-checar que todo funcione como debe
+*cuando se para la impresion tambien se para la inferencia y se cierra el programa
+*quitar la opcion de cambiar entre  modelos
 *probar modelo layer shift en mi sistema
-*checar que pierto USB tiene que ID
-*
+*checar que puerto USB tiene que ID
+aiojjiodgdae
 
 * PREGUNTAS PARA MAX:
     -
