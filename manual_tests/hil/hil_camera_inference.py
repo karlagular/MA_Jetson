@@ -48,7 +48,7 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--model-path",
-        default="yolo11n-seg.pt",
+        default="models_available/yolo11n-seg.pt",
         help="Path to the YOLO model file used for inference during this HIL run.",
     )
     p.add_argument(

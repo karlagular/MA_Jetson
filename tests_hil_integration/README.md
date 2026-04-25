@@ -58,7 +58,7 @@ pytest tests_hil_integration/test_runtime_printer_flow.py -v
 ```bash
 pytest tests_hil_integration/test_camera_inference.py \
   --camera=usb \
-  --model-path=yolo11n-seg.pt \
+  --model-path=models_available/yolo11n-seg.pt \
   --conf=0.5 \
   --max-frames=300 \
   --warmup-frames=5 \

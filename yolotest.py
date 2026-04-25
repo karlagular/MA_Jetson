@@ -81,8 +81,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Quick YOLO inference test")
     parser.add_argument(
         "--model",
-        default="best.pt",
-        help="Path to model weights (default: best.pt)",
+        default="models_available/best.pt",
+        help="Path to model weights (default: models_available/best.pt)",
     )
     parser.add_argument(
         "--source",

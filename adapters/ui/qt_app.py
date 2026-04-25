@@ -290,9 +290,9 @@ class QtVideoWindow(QMainWindow):
         btn_row.setSpacing(15)
 
         for label, model_path in [
-            ("Model 1", "YOLO11n-seg-ret.pt"),
-            ("Model 2", "yolo11n-seg.pt"),
-            ("Model 3", "yolov8n-seg.pt"),
+            ("Model 1", "models_available/YOLO11n-seg-ret.pt"),
+            ("Model 2", "models_available/yolo11n-seg.pt"),
+            ("Model 3", "models_available/yolov8n-seg.pt"),
         ]:
             btn = QPushButton(label)
             btn.setStyleSheet(_BUTTON_STYLE)

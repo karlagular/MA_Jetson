@@ -16,7 +16,7 @@ class ExperimentConfig:
     lighting: bool = False
     enclosure: bool = False
     vibration: bool = False
-    model_path: str = "yolo11n-seg.pt"
+    model_path: str = "models_available/yolo11n-seg.pt"
     alarm_m: int = 3
     alarm_n: int = 5
     rtsp_url: str = "rtsp://192.168.178.68:8554/cam"

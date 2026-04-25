@@ -19,7 +19,7 @@ Usage:
 
 Command-line options (via pytest --camera, etc.):
     --camera          : Camera backend: basler, usb, or rtsp (default: usb)
-    --model-path      : Path to YOLO model (default: yolo11n-seg.pt)
+    --model-path      : Path to YOLO model (default: models_available/yolo11n-seg.pt)
     --conf            : YOLO confidence threshold (default: 0.5)
     --max-frames      : Max frames to capture (default: 300)
     --warmup-frames   : Frames to exclude from latency stats (default: 5)
@@ -64,8 +64,8 @@ def pytest_addoption(parser):
     parser.addoption("--camera", default="usb",
                      choices=["basler", "usb", "rtsp"],
                      help="Select camera backend (default: usb)")
-    parser.addoption("--model-path", default="yolo11n-seg.pt",
-                     help="Path to YOLO model (default: yolo11n-seg.pt)")
+    parser.addoption("--model-path", default="models_available/yolo11n-seg.pt",
+                     help="Path to YOLO model (default: models_available/yolo11n-seg.pt)")
     parser.addoption("--conf", type=float, default=0.5,
                      help="YOLO confidence threshold (default: 0.5)")
     parser.addoption("--max-frames", type=int, default=300,

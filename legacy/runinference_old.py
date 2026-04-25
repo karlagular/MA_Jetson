@@ -225,6 +225,6 @@ if __name__ == "__main__":
         "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
     )
 
-    processor = YOLOProcessor('yolov8n-seg.pt', camera_id=rtsp_pipeline)
+    processor = YOLOProcessor('models_available/yolov8n-seg.pt', camera_id=rtsp_pipeline)
     processor.run()
 

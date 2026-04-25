@@ -12,7 +12,7 @@ Tests real camera capture + YOLO inference pipeline.
 ```bash
 python hil_camera_inference.py \
   --camera=usb \
-  --model-path=yolo11n-seg.pt \
+  --model-path=models_available/yolo11n-seg.pt \
   --max-frames=100 \
   --display
 ```

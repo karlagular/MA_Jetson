@@ -509,15 +509,15 @@ class VideoApp(QMainWindow):
 
     def button1_action(self):
         print("Action 1 triggered")
-        self.video_processor.change_model("YOLO11n-seg-ret.pt")
+        self.video_processor.change_model("models_available/YOLO11n-seg-ret.pt")
 
     def button2_action(self):
         print("Action 2 triggered")
-        self.video_processor.change_model("yolo11n-seg.pt")
+        self.video_processor.change_model("models_available/yolo11n-seg.pt")
 
     def button3_action(self):
         print("Action 3 triggered")
-        self.video_processor.change_model("yolov8n-seg.pt")
+        self.video_processor.change_model("models_available/yolov8n-seg.pt")
 
     def _save_alarm_frame(self, frame):
         log_dir = os.path.join("experimental_results", self.latency_tracker._session_timestamp)
@@ -735,11 +735,11 @@ if __name__ == "__main__":
 
     kamera = config["kamera"]
     if kamera == "USB Basler BW Fix":
-        processor = BaslerYOLOProcessor('yolo11n-seg.pt')
+        processor = BaslerYOLOProcessor('models_available/yolo11n-seg.pt')
     elif kamera == "RTSP rpi cam 3 wide":
-        processor = YOLOProcessor('yolo11n-seg.pt', camera_id=rtsp_pipeline)
+        processor = YOLOProcessor('models_available/yolo11n-seg.pt', camera_id=rtsp_pipeline)
     else:  # "USB Webcam Logitech" or fallback
-        processor = YOLOProcessor('yolo11n-seg.pt', camera_id=0)
+        processor = YOLOProcessor('models_available/yolo11n-seg.pt', camera_id=0)
 
     video_app = VideoApp(processor, session_id=session_ts, machine=config["maschine"])
     video_app.show()
