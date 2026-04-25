@@ -1,4 +1,38 @@
-"""Integration test: stub camera + stub inference -> pipeline tick -> alarm fires."""
+"""
+Integration tests for the full inference pipeline using stub components.
+
+Exercises the complete flow from camera frame capture through inference,
+policy evaluation, state-machine transitions, and effect dispatch — all
+with fake/stub implementations so no real camera, printer, or GPU is
+needed.
+
+Stub components used:
+  - FakeCamera: yields a fixed number of zero-filled frames.
+  - StubDetections: returns person detections for a pre-defined set of
+    frame indices; returns zero detections for all other frames.
+  - FakePrinter / FailablePrinter: records calls; optionally raises on pause.
+  - TrackingLight: counts turn_on / turn_off calls.
+  - FakeUi: records alarm and button state; exposes trigger_continue /
+    trigger_stop helpers.
+  - MemoryLogger: collects AlarmEvent objects and saved-frame labels.
+
+Test scenarios:
+  - test_alarm_triggers_after_m_of_n: alarm fires once M detections occur.
+  - test_no_alarm_without_detections: no alarm when no person is detected.
+  - test_alarm_continue_path_resumes_and_returns_to_monitoring: user
+    dismisses alarm, printer resumes, FSM returns to MONITORING.
+  - test_pause_failure_transitions_to_fault: printer pause exception drives
+    the FSM into FAULT.
+  - test_alarm_stop_path_cancels_and_reaches_stopped: user stops the print;
+    FSM reaches terminal STOPPED state with no further retriggers.
+  - test_multiple_alarm_cycles_do_not_leave_stale_state: two separated
+    alarm/continue cycles complete without stale FSM state or FAULT events.
+
+Usage:
+    pytest tests/integration/test_pipeline_replay.py
+    pytest tests/integration/test_pipeline_replay.py -v
+    pytest tests/integration/                        # all integration tests
+"""
 
 import time
 import numpy as np

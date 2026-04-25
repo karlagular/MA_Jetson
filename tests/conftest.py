@@ -1,4 +1,19 @@
-"""Shared pytest configuration for test import paths."""
+"""
+Shared pytest configuration for the entire test suite.
+
+Adds the project root to sys.path so that all top-level packages (domain,
+adapters, app, pipeline, ports, etc.) are importable from any test file,
+regardless of how deep in the tests/ directory tree the test lives.
+
+Loaded automatically by pytest before any test is collected; no explicit
+import is required.
+
+Usage:
+    pytest                          # run all tests
+    pytest tests/unit/              # run only unit tests
+    pytest tests/integration/       # run only integration tests
+    pytest -v                       # verbose output
+"""
 
 from __future__ import annotations
 

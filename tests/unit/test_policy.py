@@ -1,4 +1,22 @@
-"""Unit tests for domain.policy — MofNPolicy."""
+"""
+Unit tests for domain.policy.MofNPolicy.
+
+Verifies the M-of-N sliding-window detection policy used to decide when an
+alarm should fire:
+  - Trigger only when at least M detections appear in the last N frames.
+  - Baseline suppression prevents re-triggering for the same number of
+    detected persons after an alarm is dismissed.
+  - Disappear-frames grace period: baseline resets only after the person
+    count stays below the baseline for a configurable number of consecutive
+    frames.
+
+No real camera or printer is involved; all tests run in pure Python.
+
+Usage:
+    pytest tests/unit/test_policy.py
+    pytest tests/unit/test_policy.py -v          # verbose
+    pytest tests/unit/test_policy.py -k sliding  # run only sliding-window test
+"""
 
 from domain.policy import MofNPolicy
 

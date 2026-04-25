@@ -1,4 +1,24 @@
-"""Unit tests for printer adapters — isolated via mocked HTTP / MQTT."""
+"""
+Unit tests for all printer adapter implementations.
+
+Each adapter is tested in isolation by patching its underlying transport
+(requests for HTTP-based adapters, paho.mqtt.client for Bambu Lab MQTT)
+so no real printer or network connection is required.
+
+Adapters covered:
+  - KlipperAdapter   (Moonraker REST API over HTTP)
+  - PrusaAdapter     (PrusaLink REST API over HTTP, multi-endpoint fallback)
+  - UltimakerAdapter (Ultimaker REST API with Digest auth fallback)
+  - BambulabAdapter  (Bambu Lab MQTT, TLS)
+
+Each adapter is tested for: check_status, pause, resume, stop, and any
+adapter-specific behaviour (auth headers, topic derivation, etc.).
+
+Usage:
+    pytest tests/unit/test_printer_adapters.py
+    pytest tests/unit/test_printer_adapters.py -v
+    pytest tests/unit/test_printer_adapters.py -k Klipper   # one adapter only
+"""
 
 import json
 from unittest.mock import MagicMock, patch, call

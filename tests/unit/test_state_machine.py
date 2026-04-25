@@ -1,4 +1,20 @@
-"""Unit tests for domain.state_machine — AlarmStateMachine."""
+"""
+Unit tests for domain.state_machine.AlarmStateMachine.
+
+Covers all valid state transitions of the alarm FSM:
+  MONITORING -> ALARMED -> PAUSING_PRINTER -> AWAITING_USER
+    -> RESUMING -> MONITORING   (continue path)
+    -> CANCELING -> STOPPED     (stop path)
+  Any state -> FAULT -> MONITORING  (fault / recovery)
+
+Also validates that illegal transitions raise InvalidTransition, that the
+optional on_transition callback fires correctly, and that STOPPED is a
+terminal state with no outgoing transitions.
+
+Usage:
+    pytest tests/unit/test_state_machine.py
+    pytest tests/unit/test_state_machine.py -v
+"""
 
 import pytest
 from domain.state_machine import AlarmStateMachine, InvalidTransition, State

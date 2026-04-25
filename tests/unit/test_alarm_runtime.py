@@ -1,4 +1,27 @@
-"""Unit tests for AlarmRuntime (event/effect level)."""
+"""
+Unit tests for app.alarm_runtime.AlarmRuntime.
+
+Tests the runtime layer that bridges the AlarmOrchestrator (pure domain
+logic) with the actual port implementations (printer, light, UI, logger)
+using a thread-pool executor for blocking I/O.
+
+Fake port implementations (FakePrinter, FakeLight, FakeUi, FakeLogger) are
+defined locally so no real hardware or network is involved.
+
+Coverage:
+  - request_continue / request_stop enqueue the correct internal events.
+  - process_pending_events respects the max_events limit.
+  - _dispatch_effects routes each effect type to the correct port or
+    submits it to the thread-pool executor.
+  - handle_detection calls the orchestrator and dispatches returned effects.
+  - _pause_task / _resume_task / _stop_task enqueue Completed or Failed
+    events depending on whether the printer call raises.
+  - _handle_event routes runtime events back to the orchestrator.
+
+Usage:
+    pytest tests/unit/test_alarm_runtime.py
+    pytest tests/unit/test_alarm_runtime.py -v
+"""
 
 from unittest.mock import MagicMock
 

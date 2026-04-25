@@ -1,4 +1,29 @@
-"""Unit tests for AlarmOrchestrator (event/effect level)."""
+"""
+Unit tests for app.orchestrator.AlarmOrchestrator.
+
+Verifies that the orchestrator translates detection results and runtime
+callbacks into the correct list of Effect objects without performing any
+I/O itself (effects are value objects; execution happens in AlarmRuntime).
+
+Coverage:
+  - handle_detection emits no effects when the policy suppresses or the
+    state machine is not in MONITORING.
+  - handle_detection triggers the expected effects
+    (LogTransition x2, TurnLightOn, SaveFrame, ShowAlarm, PausePrinter)
+    and advances the state machine to PAUSING_PRINTER.
+  - on_pause_completed advances to AWAITING_USER and emits
+    EnableAlarmButtons.
+  - on_pause_failed advances to FAULT.
+  - on_user_continue emits ResumePrinterEffect.
+  - on_resume_completed turns the light off, resets the policy, and
+    returns to MONITORING.
+  - on_user_stop emits StopPrinterEffect and advances to CANCELING.
+  - on_stop_completed turns the light off and advances to STOPPED.
+
+Usage:
+    pytest tests/unit/test_orchestrator.py
+    pytest tests/unit/test_orchestrator.py -v
+"""
 
 from unittest.mock import MagicMock
 
