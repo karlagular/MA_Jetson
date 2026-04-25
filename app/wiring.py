@@ -122,7 +122,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     sm = AlarmStateMachine()
 
     # UI (must be created in Qt thread — fine, wire() is always called from main)
-    ui = QtVideoWindow(on_model_change=None)  # will be patched below
+    ui = QtVideoWindow()
 
     orchestrator = AlarmOrchestrator(
         policy=policy,
@@ -148,9 +148,6 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
         latency_tracker=latency,
         clock=clock,
     )
-
-    # Now patch model-change callback through to the pipeline
-    ui._on_model_change = pipeline.change_model
 
     # Check printer connectivity
     try:

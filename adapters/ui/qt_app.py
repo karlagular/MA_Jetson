@@ -1,7 +1,8 @@
-"""PyQt5 UI adapter — main window with video, model buttons, and alarm dialog."""
+"""PyQt5 UI adapter — main window with video display and alarm dialog."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable, Optional
 
 import cv2
@@ -52,8 +53,9 @@ _DIALOG_STYLE = (
 class ExperimentConfigDialog(QDialog):
     """PyQt5 dialog for experiment configuration."""
 
-    def __init__(self) -> None:
+    def __init__(self, available_models: list) -> None:
         super().__init__()
+        self._available_models = available_models
         self.setWindowTitle("Experimentkonfiguration")
         self.setMinimumWidth(400)
         self.setStyleSheet(_DIALOG_STYLE)
@@ -81,6 +83,10 @@ class ExperimentConfigDialog(QDialog):
         self.maschine_combo = QComboBox()
         self.maschine_combo.addItems(["Bambulab", "RatRig", "Prusa", "Ultimaker", "Fake Printer"])
 
+        self.model_combo = QComboBox()
+        for path in self._available_models:
+            self.model_combo.addItem(Path(path).name, userData=path)
+
         grid = QGridLayout()
         grid.setSpacing(10)
         grid.setColumnMinimumWidth(0, 110)
@@ -91,6 +97,7 @@ class ExperimentConfigDialog(QDialog):
             ("Kamera:",      self.kamera_combo),
             ("Z-Achse:",     self.zachse_combo),
             ("Maschine:",    self.maschine_combo),
+            ("Modell:",      self.model_combo),
         ]):
             lbl = QLabel(label_text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -121,6 +128,7 @@ class ExperimentConfigDialog(QDialog):
             kamera=self.kamera_combo.currentText(),
             z_achse=self.zachse_combo.currentText(),
             maschine=self.maschine_combo.currentText(),
+            model_path=self.model_combo.currentData(),
             lighting=self.lighting_cb.isChecked(),
             enclosure=self.enclosure_cb.isChecked(),
             vibration=self.vibration_cb.isChecked(),
@@ -130,8 +138,8 @@ class ExperimentConfigDialog(QDialog):
 class QtConfigUi(ConfigUiPort):
     """Adapter: shows the PyQt5 config dialog and returns an ExperimentConfig."""
 
-    def request_session_config(self) -> Optional[ExperimentConfig]:
-        dlg = ExperimentConfigDialog()
+    def request_session_config(self, available_models: list) -> Optional[ExperimentConfig]:
+        dlg = ExperimentConfigDialog(available_models)
         if dlg.exec_() != QDialog.Accepted:
             return None
         return dlg.get_config()
@@ -212,9 +220,8 @@ class PersonAlarmDialog(QDialog):
 class QtVideoWindow(QMainWindow):
     """Main Qt window that implements the UiPort interface."""
 
-    def __init__(self, on_model_change: Optional[Callable[[str], None]] = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self._on_model_change = on_model_change
         self._alarm_dialog: Optional[PersonAlarmDialog] = None
         self._build_ui()
 
@@ -289,16 +296,6 @@ class QtVideoWindow(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(15)
 
-        for label, model_path in [
-            ("Model 1", "models_available/YOLO11n-seg-ret.pt"),
-            ("Model 2", "models_available/yolo11n-seg.pt"),
-            ("Model 3", "models_available/yolov8n-seg.pt"),
-        ]:
-            btn = QPushButton(label)
-            btn.setStyleSheet(_BUTTON_STYLE)
-            btn.clicked.connect(lambda checked, p=model_path: self._change_model(p))
-            btn_row.addWidget(btn)
-
         fs_btn = QPushButton("Toggle Fullscreen")
         fs_btn.setStyleSheet(_BUTTON_STYLE)
         fs_btn.clicked.connect(self._toggle_fullscreen)
@@ -319,10 +316,6 @@ class QtVideoWindow(QMainWindow):
         w = self.centralWidget().width() - 20
         h = self.centralWidget().height() - 100
         self._video_label.setFixedSize(w, h)
-
-    def _change_model(self, path: str) -> None:
-        if self._on_model_change:
-            self._on_model_change(path)
 
     def _toggle_fullscreen(self) -> None:
         if self.isFullScreen():

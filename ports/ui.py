@@ -10,7 +10,7 @@ class ConfigUiPort(ABC):
     """One-shot config dialog — shown before the main window exists."""
 
     @abstractmethod
-    def request_session_config(self):
+    def request_session_config(self, available_models: list):
         """Ask the user for session config. Returns an ExperimentConfig or None if cancelled."""
 
 

@@ -8,7 +8,7 @@ from datetime import datetime
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication
 
-from app.config import save_experiment_config
+from app.config import save_experiment_config, discover_models
 from app.wiring import wire
 
 
@@ -17,7 +17,7 @@ def main() -> None:
 
     from adapters.ui.qt_app import QtConfigUi
     config_ui = QtConfigUi()
-    cfg = config_ui.request_session_config()
+    cfg = config_ui.request_session_config(discover_models())
     if cfg is None:
         sys.exit(0)
 

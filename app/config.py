@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass
@@ -45,3 +46,8 @@ def save_experiment_config(cfg: ExperimentConfig, session_dir: str) -> str:
         json.dump(data, f, indent=2, ensure_ascii=False)
     print(f"[Config] Saved to {path}")
     return path
+
+
+def discover_models(models_dir: str = "models_available") -> list:
+    """Return sorted list of .pt paths (relative to CWD) found in models_dir."""
+    return sorted(str(p) for p in Path(models_dir).glob("*.pt"))

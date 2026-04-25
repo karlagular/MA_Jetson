@@ -59,9 +59,3 @@ class UltralyticsYOLO(InferencePort):
             person_count=person_count,
             class_names=dict(results.names) if results.names else {},
         )
-
-    def change_model(self, path: str) -> None:
-        print(f"[YOLO] Switching model to: {path}")
-        self._model = YOLO(path)
-        self._model.to(self._device)
-        print(f"[YOLO] Model changed to: {path}")

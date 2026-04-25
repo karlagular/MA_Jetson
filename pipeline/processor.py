@@ -72,9 +72,6 @@ class PipelineRunner:
         self._frame_index += 1
         return True
 
-    def change_model(self, path: str) -> None:
-        self._inference.change_model(path)
-
     def shutdown(self) -> None:
         self._alarm_runtime.shutdown()
         self._tracker.stop()

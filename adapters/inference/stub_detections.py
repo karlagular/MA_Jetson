@@ -36,6 +36,3 @@ class StubDetections(InferencePort):
             )
 
         return DetectionResult(person_detected=False, class_names={0: "person"})
-
-    def change_model(self, path: str) -> None:
-        pass  # no-op for stub

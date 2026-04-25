@@ -13,8 +13,6 @@ Coverage:
     the number of "person" detections.
   - Segmentation masks are extracted and converted to numpy arrays when
     present in the model output.
-  - change_model() reloads the model from a new path and moves it to the
-    correct device.
 
 Usage:
     pytest tests/unit/adapters/inference/test_ultralytics_yolo.py
@@ -129,15 +127,3 @@ class TestUltralyticsYOLO:
         assert out.masks is not None
         assert len(out.masks) == 1
         assert np.array_equal(out.masks[0], mask_arr)
-
-    def test_change_model_reloads_and_moves_to_device(self):
-        model1 = MagicMock()
-        model2 = MagicMock()
-
-        with patch("adapters.inference.ultralytics_yolo.torch.cuda.is_available", return_value=False):
-            with patch("adapters.inference.ultralytics_yolo.YOLO", side_effect=[model1, model2]) as mock_yolo:
-                adapter = UltralyticsYOLO("model-a.pt")
-                adapter.change_model("model-b.pt")
-
-        assert mock_yolo.call_count == 2
-        model2.to.assert_called_once_with("cpu")
