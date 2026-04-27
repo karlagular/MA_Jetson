@@ -8,9 +8,9 @@ Coverage:
   - Device selection: uses "cuda" when torch.cuda.is_available() is True,
     falls back to "cpu" otherwise.
   - predict() with no boxes returns an empty DetectionResult
-    (person_detected=False, person_count=0).
+    (defect_detected=False, defect_count=0).
   - predict() correctly extracts bounding boxes, class names, and counts
-    the number of "person" detections.
+    the number of "defect" detections.
   - Segmentation masks are extracted and converted to numpy arrays when
     present in the model output.
 
@@ -67,10 +67,10 @@ class TestUltralyticsYOLO:
 
         assert out.boxes == []
         assert out.masks is None
-        assert out.person_detected is False
-        assert out.person_count == 0
+        assert out.defect_detected is False
+        assert out.defect_count == 0
 
-    def test_predict_extracts_boxes_and_person_count(self):
+    def test_predict_extracts_boxes_and_defect_count(self):
         box1 = SimpleNamespace(
             xyxy=[np.array([1, 2, 11, 12])],
             conf=[np.array(0.9)],
@@ -83,7 +83,7 @@ class TestUltralyticsYOLO:
         )
         result = SimpleNamespace(
             boxes=[box1, box2],
-            names={0: "person", 1: "cat"},
+            names={0: "defect", 1: "cat"},
             masks=None,
         )
 
@@ -98,9 +98,9 @@ class TestUltralyticsYOLO:
         assert len(out.boxes) == 2
         assert out.boxes[0].x1 == 1
         assert out.boxes[0].y2 == 12
-        assert out.person_detected is True
-        assert out.person_count == 1
-        assert out.class_names == {0: "person", 1: "cat"}
+        assert out.defect_detected is True
+        assert out.defect_count == 1
+        assert out.class_names == {0: "defect", 1: "cat"}
 
     def test_predict_collects_masks_when_present(self):
         box = SimpleNamespace(
@@ -112,7 +112,7 @@ class TestUltralyticsYOLO:
         masks = [SimpleNamespace(data=[_FakeMaskTensor(mask_arr)])]
         result = SimpleNamespace(
             boxes=[box],
-            names={0: "person"},
+            names={0: "defect"},
             masks=masks,
         )
 

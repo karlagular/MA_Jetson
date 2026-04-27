@@ -29,8 +29,8 @@ class UltralyticsYOLO(InferencePort):
 
         boxes: List[BBox] = []
         masks: Optional[List[np.ndarray]] = None
-        person_detected = False
-        person_count = 0
+        defect_detected = False
+        defect_count = 0
 
         if results.boxes is not None:
             has_masks = hasattr(results, "masks") and results.masks is not None
@@ -48,14 +48,14 @@ class UltralyticsYOLO(InferencePort):
                 if has_masks:
                     masks.append(results.masks[i].data[0].cpu().numpy())
 
-                if cls_name == "person":
-                    person_detected = True
-                    person_count += 1
+                if cls_name == "defect":
+                    defect_detected = True
+                    defect_count += 1
 
         return DetectionResult(
             boxes=boxes,
             masks=masks,
-            person_detected=person_detected,
-            person_count=person_count,
+            defect_detected=defect_detected,
+            defect_count=defect_count,
             class_names=dict(results.names) if results.names else {},
         )

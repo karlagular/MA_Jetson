@@ -224,7 +224,7 @@ def test_runtime_printer_flow(hil_printer, request):
     print("[HIL] Triggering synthetic detection...")
     frame = np.zeros((120, 160, 3), dtype=np.uint8)
     packet = FramePacket(frame=frame, index=0, timestamp_ns=int(clock.perf_counter() * 1e9))
-    detection = DetectionResult(person_detected=True, person_count=1)
+    detection = DetectionResult(defect_detected=True, defect_count=1)
     
     alarm_runtime.handle_detection(detection, packet)
     

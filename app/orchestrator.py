@@ -96,7 +96,7 @@ class AlarmOrchestrator:
             return []  # print was cancelled — alarm system disabled
 
         now = self._clock.perf_counter()
-        should_alarm = self._policy.update(result.person_count, now)
+        should_alarm = self._policy.update(result.defect_count, now)
 
         if not should_alarm:
             return []
@@ -105,13 +105,13 @@ class AlarmOrchestrator:
 
         self._sm.trigger_alarm()
         self._alarm_frame_index = packet.index
-        print(f"[ALARM] Person alarm triggered at frame {packet.index}")
+        print(f"[ALARM] Defect alarm triggered at frame {packet.index}")
         self._sm.begin_pause()
         return [
             LogTransitionEffect(packet.index, "MONITORING", "ALARMED", "policy_triggered"),
             LogTransitionEffect(packet.index, "ALARMED", "PAUSING_PRINTER", "begin_pause"),
             TurnLightOnEffect(),
-            SaveFrameEffect(packet.frame, f"person_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            SaveFrameEffect(packet.frame, f"defect_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
             ShowAlarmEffect(),
             PausePrinterEffect(packet.index),
         ]

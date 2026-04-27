@@ -2,7 +2,7 @@
 Hardware-in-the-loop test: real camera + real YOLO inference.
 
 Tests the complete pipeline from real camera frame capture through YOLO
-inference and detects person instances. Supports multiple camera backends:
+inference and detects defect instances. Supports multiple camera backends:
   - Basler pypylon
   - OpenCV USB
   - GStreamer RTSP
@@ -120,7 +120,7 @@ def test_camera_inference(hil_camera, hil_model, request):
     Verifies:
       - Camera opens successfully
       - Frames are captured and passed to inference
-      - Person detection latency is measured
+      - Defect detection latency is measured
       - Inference completes for max_frames or until stream ends
     """
     max_frames = request.config.getoption("--max-frames")
@@ -130,7 +130,7 @@ def test_camera_inference(hil_camera, hil_model, request):
     assert hil_camera.open(), "Camera open failed"
     
     frame_idx = 0
-    person_frames = 0
+    defect_frames = 0
     latencies_ms = []
     colors = [[0, 255, 0], [0, 180, 255], [255, 200, 0], [255, 0, 0]]
     
@@ -147,12 +147,12 @@ def test_camera_inference(hil_camera, hil_model, request):
             if frame_idx >= warmup_frames:
                 latencies_ms.append(dt_ms)
             
-            if result.person_count > 0:
-                person_frames += 1
+            if result.defect_count > 0:
+                defect_frames += 1
             
             if display:
                 overlay = draw_overlay(frame, result, colors)
-                cv2.putText(overlay, f"frame={frame_idx} persons={result.person_count}",
+                cv2.putText(overlay, f"frame={frame_idx} defects={result.defect_count}",
                            (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 cv2.imshow("HIL Camera->Inference", overlay)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -176,5 +176,5 @@ def test_camera_inference(hil_camera, hil_model, request):
         assert avg_latency < 5000.0, f"Average latency too high: {avg_latency:.2f}ms"
         assert max_latency < 10000.0, f"Max latency too high: {max_latency:.2f}ms"
         
-        print(f"\n[HIL][SUMMARY] Processed {frame_idx} frames, {person_frames} with detections")
+        print(f"\n[HIL][SUMMARY] Processed {frame_idx} frames, {defect_frames} with detections")
         print(f"  Inference latency (ms): avg={avg_latency:.2f}, min={min_latency:.2f}, max={max_latency:.2f}")

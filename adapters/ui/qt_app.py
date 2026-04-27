@@ -145,7 +145,7 @@ class QtConfigUi(ConfigUiPort):
         return dlg.get_config()
 
 
-class PersonAlarmDialog(QDialog):
+class DefectAlarmDialog(QDialog):
     """Modal-looking alarm popup (stays on top, non-blocking)."""
 
     def __init__(
@@ -157,7 +157,7 @@ class PersonAlarmDialog(QDialog):
         super().__init__(parent)
         self._on_continue = on_continue
         self._on_stop = on_stop
-        self.setWindowTitle("Person erkannt!")
+        self.setWindowTitle("Fehler erkannt!")
         self.setModal(False)
         self.setMinimumWidth(380)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
@@ -174,7 +174,7 @@ class PersonAlarmDialog(QDialog):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
 
-        msg = QLabel("Person erkannt!\nBitte Druckvorgang überprüfen.")
+        msg = QLabel("Fehler erkannt!\nBitte Druckvorgang überprüfen.")
         msg.setAlignment(Qt.AlignCenter)
         msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #FF5555;")
         layout.addWidget(msg)
@@ -222,7 +222,7 @@ class QtVideoWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self._alarm_dialog: Optional[PersonAlarmDialog] = None
+        self._alarm_dialog: Optional[DefectAlarmDialog] = None
         self._shutdown_callback: Optional[Callable[[], None]] = None
         self._build_ui()
 
@@ -256,7 +256,7 @@ class QtVideoWindow(QMainWindow):
         print("[UI] _show_alarm_main_thread() — opening alarm dialog")
         if self._alarm_dialog is not None and self._alarm_dialog.isVisible():
             return
-        self._alarm_dialog = PersonAlarmDialog(self, on_continue, on_stop)
+        self._alarm_dialog = DefectAlarmDialog(self, on_continue, on_stop)
         self._alarm_dialog.show()
 
     def dismiss_alarm(self) -> None:

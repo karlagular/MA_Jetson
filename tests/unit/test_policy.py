@@ -5,8 +5,8 @@ Verifies the M-of-N sliding-window detection policy used to decide when an
 alarm should fire:
   - Trigger only when at least M detections appear in the last N frames.
   - Baseline suppression prevents re-triggering for the same number of
-    detected persons after an alarm is dismissed.
-  - Disappear-frames grace period: baseline resets only after the person
+    detected defects after an alarm is dismissed.
+  - Disappear-frames grace period: baseline resets only after the defect
     count stays below the baseline for a configurable number of consecutive
     frames.
 
@@ -56,11 +56,11 @@ class TestMofNPolicy:
         assert p.update(1, 3.0) is True  # triggers, baseline=1
         p.reset()
 
-        # Person still visible — suppressed
+        # Defect still visible — suppressed
         assert p.update(1, 4.0) is False
         assert p.update(1, 5.0) is False
 
-        # Person disappears for 3 consecutive frames -> baseline clears
+        # Defect disappears for 3 consecutive frames -> baseline clears
         assert p.update(0, 6.0) is False
         assert p.update(0, 7.0) is False
         assert p.update(0, 8.0) is False  # zero_run=3, baseline reset to 0
@@ -70,30 +70,30 @@ class TestMofNPolicy:
         p.update(1, 10.0)
         assert p.update(1, 11.0) is True  # new alarm
 
-    def test_same_person_suppressed_after_dismissal(self):
+    def test_same_defect_suppressed_after_dismissal(self):
         p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # triggers, baseline=1
         p.reset()
 
-        # Same person stays — never re-triggers
+        # Same defect stays — never re-triggers
         for t in range(4, 20):
             assert p.update(1, float(t)) is False
 
-    def test_new_additional_person_triggers(self):
+    def test_new_additional_defect_triggers(self):
         p = MofNPolicy(m=3, n=5, disappear_frames=3)
-        # First person triggers alarm
+        # First defect triggers alarm
         p.update(1, 1.0)
         p.update(1, 2.0)
         assert p.update(1, 3.0) is True  # baseline=1
         p.reset()
 
-        # Same 1 person — suppressed
+        # Same 1 defect — suppressed
         assert p.update(1, 4.0) is False
         assert p.update(1, 5.0) is False
 
-        # Second person appears (count=2 > baseline=1) -> triggers
+        # Second defect appears (count=2 > baseline=1) -> triggers
         assert p.update(2, 6.0) is True  # baseline now 2
         p.reset()
 
@@ -101,7 +101,7 @@ class TestMofNPolicy:
         assert p.update(2, 7.0) is False
 
     def test_disappear_grace_period(self):
-        """Person vanishes for only 2 frames (< disappear_frames=3) then reappears.
+        """Defect vanishes for only 2 frames (< disappear_frames=3) then reappears.
         Baseline should NOT clear — still suppressed."""
         p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(1, 1.0)
@@ -144,11 +144,11 @@ class TestMofNPolicy:
         assert p.update(1, 7.0) is True
 
     def test_partial_disappearance_lowers_baseline(self):
-        """Two persons trigger alarm (baseline=2). One leaves for 3 frames
-        (count=1). Baseline drops to 1. A new second person (count=2)
+        """Two defects trigger alarm (baseline=2). One disappears for 3 frames
+        (count=1). Baseline drops to 1. A new second defect (count=2)
         triggers a fresh alarm."""
         p = MofNPolicy(m=3, n=5, disappear_frames=3)
-        # Two persons detected for 3 frames -> alarm
+        # Two defects detected for 3 frames -> alarm
         p.update(2, 1.0)
         p.update(2, 2.0)
         assert p.update(2, 3.0) is True  # baseline=2
@@ -159,11 +159,11 @@ class TestMofNPolicy:
         assert p.update(1, 5.0) is False  # below_run=2
         assert p.update(1, 6.0) is False  # below_run=3 -> baseline drops to 1
 
-        # New second person appears (count=2 > baseline=1)
+        # New second defect appears (count=2 > baseline=1)
         assert p.update(2, 7.0) is True  # new alarm
 
     def test_partial_disappearance_grace_holds(self):
-        """Two persons, one leaves for only 2 frames (< 3). Baseline stays 2,
+        """Two defects, one disappears for only 2 frames (< 3). Baseline stays 2,
         so same count=2 coming back is still suppressed."""
         p = MofNPolicy(m=3, n=5, disappear_frames=3)
         p.update(2, 1.0)

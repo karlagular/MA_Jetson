@@ -200,7 +200,7 @@ class TestAlarmRuntime:
         orchestrator.handle_detection.return_value = [TurnLightOnEffect()]
         packet = FramePacket(frame=np.zeros((2, 2, 3), dtype=np.uint8), index=1, timestamp_ns=1)
 
-        runtime.handle_detection(DetectionResult(person_count=1), packet)
+        runtime.handle_detection(DetectionResult(defect_count=1), packet)
 
         orchestrator.handle_detection.assert_called_once()
         assert light.on_calls == 1

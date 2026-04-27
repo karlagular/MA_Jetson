@@ -8,7 +8,7 @@ needed.
 
 Stub components used:
   - FakeCamera: yields a fixed number of zero-filled frames.
-  - StubDetections: returns person detections for a pre-defined set of
+  - StubDetections: returns defect detections for a pre-defined set of
     frame indices; returns zero detections for all other frames.
   - FakePrinter / FailablePrinter: records calls; optionally raises on pause.
   - TrackingLight: counts turn_on / turn_off calls.
@@ -18,7 +18,7 @@ Stub components used:
 
 Test scenarios:
   - test_alarm_triggers_after_m_of_n: alarm fires once M detections occur.
-  - test_no_alarm_without_detections: no alarm when no person is detected.
+  - test_no_alarm_without_detections: no alarm when no defect is detected.
   - test_alarm_continue_path_resumes_and_returns_to_monitoring: user
     dismisses alarm, printer resumes, FSM returns to MONITORING.
   - test_pause_failure_transitions_to_fault: printer pause exception drives
@@ -171,10 +171,10 @@ class TestPipelineReplay:
         return predicate()
 
     def test_alarm_triggers_after_m_of_n(self):
-        """Person detected in frames 0-4 (m=3, n=5) -> alarm should fire."""
+        """Defect detected in frames 0-4 (m=3, n=5) -> alarm should fire."""
         clock = FakeClock()
         camera = FakeCamera(n_frames=10)
-        stub = StubDetections(person_at_frames={0, 1, 2, 3, 4})
+        stub = StubDetections(defect_at_frames={0, 1, 2, 3, 4})
         printer = FakePrinter()
         light = DummyLight()
         ui = FakeUi()
@@ -217,10 +217,10 @@ class TestPipelineReplay:
         assert len(logger.events) > 0, "No alarm events logged"
 
     def test_no_alarm_without_detections(self):
-        """No person detected -> no alarm."""
+        """No defect detected -> no alarm."""
         clock = FakeClock()
         camera = FakeCamera(n_frames=10)
-        stub = StubDetections(person_at_frames=set())
+        stub = StubDetections(defect_at_frames=set())
         printer = FakePrinter()
         light = DummyLight()
         ui = FakeUi()
@@ -262,7 +262,7 @@ class TestPipelineReplay:
         """Alarm -> pause -> user continue -> resume -> MONITORING."""
         clock = FakeClock()
         camera = FakeCamera(n_frames=12)
-        stub = StubDetections(person_at_frames={0, 1, 2, 3, 4})
+        stub = StubDetections(defect_at_frames={0, 1, 2, 3, 4})
         printer = FakePrinter()
         light = TrackingLight()
         ui = FakeUi()
@@ -314,7 +314,7 @@ class TestPipelineReplay:
         """Pause exception should move flow to FAULT state."""
         clock = FakeClock()
         camera = FakeCamera(n_frames=10)
-        stub = StubDetections(person_at_frames={0, 1, 2, 3, 4})
+        stub = StubDetections(defect_at_frames={0, 1, 2, 3, 4})
         printer = FailablePrinter(fail_on_pause=True)
         light = TrackingLight()
         ui = FakeUi()
@@ -357,7 +357,7 @@ class TestPipelineReplay:
         """Alarm -> pause -> user stop -> STOPPED and no retrigger."""
         clock = FakeClock()
         camera = FakeCamera(n_frames=20)
-        stub = StubDetections(person_at_frames={0, 1, 2, 3, 4, 10, 11, 12})
+        stub = StubDetections(defect_at_frames={0, 1, 2, 3, 4, 10, 11, 12})
         printer = FakePrinter()
         light = TrackingLight()
         ui = FakeUi()
@@ -410,7 +410,7 @@ class TestPipelineReplay:
         clock = FakeClock()
         camera = FakeCamera(n_frames=25)
         stub = StubDetections(
-            person_at_frames={0, 1, 2, 3, 4, 10, 11, 12, 13, 14}
+            defect_at_frames={0, 1, 2, 3, 4, 10, 11, 12, 13, 14}
         )
         printer = FakePrinter()
         light = TrackingLight()

@@ -124,15 +124,15 @@ def _make_camera(args: argparse.Namespace):
     )
 
 
-def _summary_dict(args: argparse.Namespace, latencies_ms: list[float], person_frames: int, total_frames: int) -> dict[str, Any]:
+def _summary_dict(args: argparse.Namespace, latencies_ms: list[float], defect_frames: int, total_frames: int) -> dict[str, Any]:
     return {
         "script": "hil_camera_inference",
         "camera": args.camera,
         "model_path": args.model_path,
         "conf": args.conf,
         "total_frames": total_frames,
-        "person_frames": person_frames,
-        "person_frame_ratio": (person_frames / total_frames) if total_frames else 0.0,
+        "defect_frames": defect_frames,
+        "defect_frame_ratio": (defect_frames / total_frames) if total_frames else 0.0,
         "latency_ms_avg": mean(latencies_ms) if latencies_ms else 0.0,
         "latency_ms_min": min(latencies_ms) if latencies_ms else 0.0,
         "latency_ms_max": max(latencies_ms) if latencies_ms else 0.0,
@@ -150,7 +150,7 @@ def main() -> int:
         return 1
 
     frame_idx = 0
-    person_frames = 0
+    defect_frames = 0
     latencies_ms: list[float] = []
     wall_start = time.perf_counter()
 
@@ -171,12 +171,12 @@ def main() -> int:
             if frame_idx >= args.warmup_frames:
                 latencies_ms.append(dt_ms)
 
-            if result.person_count > 0:
-                person_frames += 1
+            if result.defect_count > 0:
+                defect_frames += 1
 
             if frame_idx == 0 or frame_idx % 25 == 0:
                 print(
-                    f"[HIL] frame={frame_idx:04d} persons={result.person_count} "
+                    f"[HIL] frame={frame_idx:04d} defects={result.defect_count} "
                     f"boxes={len(result.boxes)} infer_ms={dt_ms:.2f}"
                 )
 
@@ -184,7 +184,7 @@ def main() -> int:
                 overlay = draw_overlay(frame, result, colors)
                 cv2.putText(
                     overlay,
-                    f"frame={frame_idx} persons={result.person_count} infer={dt_ms:.1f}ms",
+                    f"frame={frame_idx} defects={result.defect_count} infer={dt_ms:.1f}ms",
                     (10, 24),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -205,12 +205,12 @@ def main() -> int:
     wall_s = max(time.perf_counter() - wall_start, 1e-9)
     fps = frame_idx / wall_s
 
-    summary = _summary_dict(args, latencies_ms, person_frames, frame_idx)
+    summary = _summary_dict(args, latencies_ms, defect_frames, frame_idx)
     summary["effective_fps"] = fps
 
     print("\n[HIL][SUMMARY] Camera->Inference")
     print(f"  frames_total      : {frame_idx}")
-    print(f"  person_frames     : {person_frames}")
+    print(f"  defect_frames     : {defect_frames}")
     print(f"  effective_fps     : {fps:.2f}")
     print(f"  infer_ms_avg      : {summary['latency_ms_avg']:.2f}")
     print(f"  infer_ms_min/max  : {summary['latency_ms_min']:.2f}/{summary['latency_ms_max']:.2f}")

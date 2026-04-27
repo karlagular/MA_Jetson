@@ -202,9 +202,9 @@ def main() -> int:
 
     frame = np.zeros((120, 160, 3), dtype=np.uint8)
     packet = FramePacket(frame=frame, index=0, timestamp_ns=int(clock.perf_counter() * 1e9))
-    detection = DetectionResult(person_detected=True, person_count=1)
+    detection = DetectionResult(defect_detected=True, defect_count=1)
 
-    print("[HIL] Triggering synthetic person detection...")
+    print("[HIL] Triggering synthetic defect detection...")
     alarm_runtime.handle_detection(detection, packet)
 
     reached_waiting = _wait_until(

@@ -1,4 +1,4 @@
-"""Alarm state machine — governs the lifecycle of a person-detection alarm."""
+"""Alarm state machine — governs the lifecycle of a defect-detection alarm."""
 
 from __future__ import annotations
 

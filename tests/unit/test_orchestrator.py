@@ -65,7 +65,7 @@ class TestAlarmOrchestrator:
         sm = AlarmStateMachine()
         orchestrator = AlarmOrchestrator(policy=policy, state_machine=sm, clock=FakeClock())
 
-        effects = orchestrator.handle_detection(DetectionResult(person_count=1), self._packet())
+        effects = orchestrator.handle_detection(DetectionResult(defect_count=1), self._packet())
         assert effects == []
 
     def test_handle_detection_no_effects_when_not_monitoring(self):
@@ -75,7 +75,7 @@ class TestAlarmOrchestrator:
         sm.trigger_alarm()  # ALARMED
         orchestrator = AlarmOrchestrator(policy=policy, state_machine=sm, clock=FakeClock())
 
-        effects = orchestrator.handle_detection(DetectionResult(person_count=1), self._packet())
+        effects = orchestrator.handle_detection(DetectionResult(defect_count=1), self._packet())
         assert effects == []
 
     def test_handle_detection_triggers_expected_effects(self):
@@ -84,7 +84,7 @@ class TestAlarmOrchestrator:
         sm = AlarmStateMachine()
         orchestrator = AlarmOrchestrator(policy=policy, state_machine=sm, clock=FakeClock())
 
-        effects = orchestrator.handle_detection(DetectionResult(person_count=2), self._packet(42))
+        effects = orchestrator.handle_detection(DetectionResult(defect_count=2), self._packet(42))
 
         assert [type(e) for e in effects] == [
             LogTransitionEffect,
