@@ -13,11 +13,12 @@ from ports.inference import InferencePort
 
 
 class UltralyticsYOLO(InferencePort):
-    def __init__(self, model_path: str, conf: float = 0.5) -> None:
+    def __init__(self, model_path: str, conf: float = 0.5, safe_class_id: int = 0) -> None:
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[YOLO] Using device: {self._device}")
         self._model = YOLO(model_path)
         self._conf = conf
+        self._safe_class_id = safe_class_id
 
     def predict(self, frame: np.ndarray) -> DetectionResult:
         results = self._model.predict(
@@ -48,7 +49,7 @@ class UltralyticsYOLO(InferencePort):
                 if has_masks:
                     masks.append(results.masks[i].data[0].cpu().numpy())
 
-                if cls_name == "defect":
+                if cls_id != self._safe_class_id:
                     defect_detected = True
                     defect_count += 1
 

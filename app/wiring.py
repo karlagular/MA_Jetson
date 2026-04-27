@@ -39,7 +39,7 @@ class _SystemClock(ClockPort):
 
 def _make_inference(cfg: ExperimentConfig) -> InferencePort:
     from adapters.inference.ultralytics_yolo import UltralyticsYOLO
-    return UltralyticsYOLO(cfg.model_path, conf=0.5)
+    return UltralyticsYOLO(cfg.model_path, conf=0.5, safe_class_id=cfg.safe_class_id)
 
 
 def _make_camera(cfg: ExperimentConfig) -> CameraPort:

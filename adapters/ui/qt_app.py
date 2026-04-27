@@ -87,6 +87,8 @@ class ExperimentConfigDialog(QDialog):
         for path in self._available_models:
             self.model_combo.addItem(Path(path).name, userData=path)
 
+        self.safe_class_combo = QComboBox()
+
         grid = QGridLayout()
         grid.setSpacing(10)
         grid.setColumnMinimumWidth(0, 110)
@@ -98,12 +100,16 @@ class ExperimentConfigDialog(QDialog):
             ("Z-Achse:",     self.zachse_combo),
             ("Maschine:",    self.maschine_combo),
             ("Modell:",      self.model_combo),
+            ("Safe class:",  self.safe_class_combo),
         ]):
             lbl = QLabel(label_text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             grid.addWidget(lbl, i, 0)
             grid.addWidget(widget, i, 1)
         outer.addLayout(grid)
+
+        self.model_combo.currentIndexChanged.connect(self._on_model_changed)
+        self._on_model_changed()
 
         self.lighting_cb  = QCheckBox("Lighting")
         self.enclosure_cb = QCheckBox("Enclosure")
@@ -132,7 +138,23 @@ class ExperimentConfigDialog(QDialog):
             lighting=self.lighting_cb.isChecked(),
             enclosure=self.enclosure_cb.isChecked(),
             vibration=self.vibration_cb.isChecked(),
+            safe_class_id=self.safe_class_combo.currentData() or 0,
         )
+
+    def _on_model_changed(self) -> None:
+        path = self.model_combo.currentData()
+        names = self._load_class_names(path) if path else {}
+        self.safe_class_combo.clear()
+        for cls_id in sorted(names):
+            self.safe_class_combo.addItem(f"{cls_id}:{names[cls_id]}", userData=cls_id)
+
+    @staticmethod
+    def _load_class_names(model_path: str) -> dict:
+        try:
+            from ultralytics import YOLO
+            return dict(YOLO(model_path).names)
+        except Exception:
+            return {}
 
 
 class QtConfigUi(ConfigUiPort):

@@ -22,6 +22,7 @@ class ExperimentConfig:
     alarm_n: int = 5
     rtsp_url: str = "rtsp://192.168.178.68:8554/cam"
     video_path: str = "test_video.mp4"
+    safe_class_id: int = 0
 
 
 def load_experiment_config(path: str) -> ExperimentConfig:
