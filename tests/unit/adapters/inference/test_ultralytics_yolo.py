@@ -102,6 +102,57 @@ class TestUltralyticsYOLO:
         assert out.defect_count == 1
         assert out.class_names == {0: "defect", 1: "cat"}
 
+    def test_safe_class_is_not_counted_as_defect(self):
+        """Detection of the safe class ID must not increment defect_count."""
+        box_safe = SimpleNamespace(
+            xyxy=[np.array([0, 0, 4, 4])],
+            conf=[np.array(0.95)],
+            cls=[np.array(2)],
+        )
+        result = SimpleNamespace(
+            boxes=[box_safe],
+            names={2: "background"},
+            masks=None,
+        )
+        model = MagicMock()
+        model.predict.return_value = [result]
+
+        with patch("adapters.inference.ultralytics_yolo.torch.cuda.is_available", return_value=False):
+            with patch("adapters.inference.ultralytics_yolo.YOLO", return_value=model):
+                adapter = UltralyticsYOLO("model.pt", safe_class_id=2)
+                out = adapter.predict(np.zeros((8, 8, 3), dtype=np.uint8))
+
+        assert out.defect_detected is False
+        assert out.defect_count == 0
+
+    def test_non_safe_class_is_counted_as_defect(self):
+        """Only detections whose class ID differs from safe_class_id count as defects."""
+        box_safe = SimpleNamespace(
+            xyxy=[np.array([0, 0, 4, 4])],
+            conf=[np.array(0.9)],
+            cls=[np.array(1)],
+        )
+        box_defect = SimpleNamespace(
+            xyxy=[np.array([5, 5, 9, 9])],
+            conf=[np.array(0.85)],
+            cls=[np.array(0)],
+        )
+        result = SimpleNamespace(
+            boxes=[box_safe, box_defect],
+            names={0: "crack", 1: "background"},
+            masks=None,
+        )
+        model = MagicMock()
+        model.predict.return_value = [result]
+
+        with patch("adapters.inference.ultralytics_yolo.torch.cuda.is_available", return_value=False):
+            with patch("adapters.inference.ultralytics_yolo.YOLO", return_value=model):
+                adapter = UltralyticsYOLO("model.pt", safe_class_id=1)
+                out = adapter.predict(np.zeros((8, 8, 3), dtype=np.uint8))
+
+        assert out.defect_detected is True
+        assert out.defect_count == 1
+
     def test_predict_collects_masks_when_present(self):
         box = SimpleNamespace(
             xyxy=[np.array([0, 0, 2, 2])],
