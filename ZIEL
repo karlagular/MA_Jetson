@@ -40,13 +40,28 @@ del sistema:
 	- de confirmar comando
 
 TO DOs:
+REFLE:
+*Anfoderungen nur bei der Anforderungsanalyse
+*Nur Systemvalidierung, nicht separate Verifizierung
+*Betreuungsprotokoll
 
 URGENTE:
-*cuando se para la impresion tambien se para la inferencia y se cierra el programa
-*quitar la opcion de cambiar entre  modelos
-*probar modelo layer shift en mi sistema
+*cambiar person detection for defect detection!
+*agregar otra opcion a la ventana de config: seleccionar safe class
+	-seleccionar de una lista
+*cuando el modelo es seleccionado en la primera mascara de la gui el sistema debe detectar que clases detecta el modelo seleccionado y hacer una lista con ID: Class para que sea desplegada con las opciones para safe class
+*hacer HIL-Tests en impresoras:
+	- Prusa Core One
+	- Bambulab
+	- Ultimaker
+	- Ratrig
+*hacer Integrationtests
+*hacer HIL-Tests en camaras:
+	- Basler
+	- Webcam
+	- RTSP
 *checar que puerto USB tiene que ID
-aiojjiodgdae
+
 
 * PREGUNTAS PARA MAX:
     -
