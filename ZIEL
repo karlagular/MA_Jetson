@@ -46,10 +46,9 @@ REFLE:
 *Betreuungsprotokoll
 
 URGENTE:
-*cambiar person detection for defect detection!
-*agregar otra opcion a la ventana de config: seleccionar safe class
-	-seleccionar de una lista
-*cuando el modelo es seleccionado en la primera mascara de la gui el sistema debe detectar que clases detecta el modelo seleccionado y hacer una lista con ID: Class para que sea desplegada con las opciones para safe class
+
+*probar: la safe class es la unica clase que no contara como defecto para activar una alarma
+*test que tome en cuenta la safe_class
 *hacer HIL-Tests en impresoras:
 	- Prusa Core One
 	- Bambulab
