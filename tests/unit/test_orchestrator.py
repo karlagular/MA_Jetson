@@ -18,7 +18,8 @@ Coverage:
   - on_resume_completed turns the light off, resets the policy, and
     returns to MONITORING.
   - on_user_stop emits StopPrinterEffect and advances to CANCELING.
-  - on_stop_completed turns the light off and advances to STOPPED.
+  - on_stop_completed turns the light off, advances to STOPPED, and requests
+    application shutdown.
 
 Usage:
     pytest tests/unit/test_orchestrator.py
@@ -37,6 +38,7 @@ from app.orchestrator import (
     ResumePrinterEffect,
     SaveFrameEffect,
     ShowAlarmEffect,
+    ShutdownApplicationEffect,
     StopPrinterEffect,
     TurnLightOffEffect,
     TurnLightOnEffect,
@@ -162,7 +164,7 @@ class TestAlarmOrchestrator:
         orchestrator._alarm_frame_index = 5
 
         effects = orchestrator.on_stop_completed()
-        assert [type(e) for e in effects] == [TurnLightOffEffect, LogTransitionEffect]
+        assert [type(e) for e in effects] == [TurnLightOffEffect, LogTransitionEffect, ShutdownApplicationEffect]
         assert sm.current_state == State.STOPPED
 
     def test_on_user_stop_emits_stop_effect(self):

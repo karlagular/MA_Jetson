@@ -223,7 +223,12 @@ class QtVideoWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._alarm_dialog: Optional[PersonAlarmDialog] = None
+        self._shutdown_callback: Optional[Callable[[], None]] = None
         self._build_ui()
+
+    def set_shutdown_callback(self, callback: Callable[[], None]) -> None:
+        """Set callback to invoke when application shutdown is requested."""
+        self._shutdown_callback = callback
 
     # -- UiPort ---------------------------------------------------------
 
@@ -271,6 +276,24 @@ class QtVideoWindow(QMainWindow):
     def _enable_alarm_buttons_main_thread(self) -> None:
         if self._alarm_dialog is not None and self._alarm_dialog.isVisible():
             self._alarm_dialog.enable_buttons()
+
+    def request_application_shutdown(self) -> None:
+        """Request clean shutdown from alarm system (thread-safe)."""
+        print("[UI] request_application_shutdown() called — queuing to main thread")
+        QMetaObject.invokeMethod(
+            self,
+            "_shutdown_application",
+            Qt.QueuedConnection,
+        )
+
+    @pyqtSlot()
+    def _shutdown_application(self) -> None:
+        """Execute shutdown on the main Qt thread."""
+        print("[UI] _shutdown_application() executing on main thread")
+        if self._shutdown_callback:
+            self._shutdown_callback()
+        else:
+            print("[UI] WARNING: No shutdown callback set!")
 
     # -- UI construction ------------------------------------------------
 

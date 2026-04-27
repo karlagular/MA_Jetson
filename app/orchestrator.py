@@ -69,6 +69,11 @@ class LogTransitionEffect(Effect):
     action: str
 
 
+@dataclass
+class ShutdownApplicationEffect(Effect):
+    pass
+
+
 class AlarmOrchestrator:
     """Coordinates alarm logic and emits effects to be executed elsewhere."""
 
@@ -159,6 +164,7 @@ class AlarmOrchestrator:
         return [
             TurnLightOffEffect(),
             LogTransitionEffect(self._alarm_frame_index, "CANCELING", "STOPPED", "cancel_done"),
+            ShutdownApplicationEffect(),
         ]
 
     def on_stop_failed(self, error: str) -> List[Effect]:

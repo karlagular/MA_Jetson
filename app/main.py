@@ -32,10 +32,22 @@ def main() -> None:
 
     ui_window.show()
 
+    # Set up inference timer
     timer = QTimer()
     timer.timeout.connect(lambda: _tick(pipeline, timer))
     timer.start(30)
 
+    # Register shutdown callback for alarm system
+    def shutdown_app():
+        """Complete application shutdown sequence."""
+        print("[Main] Shutdown requested — stopping timer and pipeline")
+        timer.stop()
+        pipeline.shutdown()
+        QApplication.instance().quit()
+
+    ui_window.set_shutdown_callback(shutdown_app)
+
+    # Register cleanup on manual window close
     def on_close(event):
         pipeline.shutdown()
         event.accept()

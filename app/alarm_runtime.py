@@ -17,6 +17,7 @@ from app.orchestrator import (
     ResumePrinterEffect,
     SaveFrameEffect,
     ShowAlarmEffect,
+    ShutdownApplicationEffect,
     StopPrinterEffect,
     TurnLightOffEffect,
     TurnLightOnEffect,
@@ -171,6 +172,8 @@ class AlarmRuntime:
                 self._executor.submit(self._resume_task)
             elif isinstance(effect, StopPrinterEffect):
                 self._executor.submit(self._stop_task)
+            elif isinstance(effect, ShutdownApplicationEffect):
+                self._ui.request_application_shutdown()
 
     def _pause_task(self, frame_index: int) -> None:
         try:

@@ -30,3 +30,7 @@ class UiPort(ABC):
     @abstractmethod
     def enable_alarm_buttons(self) -> None:
         """Enable the continue/stop buttons in the alarm dialog (called after printer pause settles)."""
+
+    @abstractmethod
+    def request_application_shutdown(self) -> None:
+        """Request clean application shutdown (stop inference, close pipeline, exit Qt)."""
