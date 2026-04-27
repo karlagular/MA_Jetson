@@ -109,6 +109,9 @@ class FakeUi(UiPort):
     def enable_alarm_buttons(self):
         self.buttons_enabled = True
 
+    def request_application_shutdown(self):
+        pass
+
     def trigger_continue(self):
         if self._on_continue is not None:
             self._on_continue()
