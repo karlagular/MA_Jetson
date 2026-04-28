@@ -14,12 +14,13 @@ Supported printers:
 Markers: @pytest.mark.hil_printer
 
 Usage:
-    pytest tests/integration/hil/test_printer_pause_cycle.py
-    pytest tests/integration/hil/test_printer_pause_cycle.py -v --printer=Prusa --sequence=pause-resume
+    pytest tests_hil_integration/test_printer_pause_cycle.py
+    pytest tests_hil_integration/test_printer_pause_cycle.py -vs --printer=Prusa --sequence=pause-resume
+    pytest tests_hil_integration/test_printer_pause_cycle.py -vs --printer=Prusa --sequence=pause-resume-pause-stop
 
 Command-line options (via pytest):
     --printer           : Printer to test (required: Bambulab, Prusa, Ultimaker, RatRig)
-    --sequence          : Commands to run (default: pause-resume, or: pause-stop)
+    --sequence          : Commands to run (default: pause-resume, or: pause-stop, or: pause-resume-pause-stop)
     --machine-config    : Path to machine_config.json (default: machine_config.json)
     --skip-connectivity-check : Skip initial status check
     --yes               : Auto-confirm safety prompts (non-interactive)
@@ -42,22 +43,6 @@ from adapters.printer.bambu_mqtt import BambulabAdapter
 from adapters.printer.klipper_moonraker import KlipperAdapter
 from adapters.printer.prusa_link import PrusaAdapter
 from adapters.printer.ultimaker_rest import UltimakerAdapter
-
-
-def pytest_addoption(parser):
-    """Add HIL printer options to pytest."""
-    parser.addoption("--printer",
-                     choices=["Bambulab", "Prusa", "Ultimaker", "RatRig"],
-                     help="Printer to test (required)")
-    parser.addoption("--sequence", default="pause-resume",
-                     choices=["pause-resume", "pause-stop"],
-                     help="Command sequence (default: pause-resume)")
-    parser.addoption("--machine-config", default="machine_config.json",
-                     help="Path to machine_config.json")
-    parser.addoption("--skip-connectivity-check", action="store_true",
-                     help="Skip initial connectivity check")
-    parser.addoption("--yes", action="store_true",
-                     help="Auto-confirm prompts (non-interactive)")
 
 
 @pytest.fixture
@@ -128,7 +113,7 @@ def test_printer_pause_resume_cycle(hil_printer, request):
     """
     sequence = request.config.getoption("--sequence")
     if sequence != "pause-resume":
-        pytest.skip("Skipping pause-resume (sequence is pause-stop)")
+        pytest.skip(f"Skipping pause-resume (sequence is {sequence})")
     
     skip_check = request.config.getoption("--skip-connectivity-check")
     assume_yes = request.config.getoption("--yes")
@@ -168,7 +153,7 @@ def test_printer_pause_stop_cycle(hil_printer, request):
     """
     sequence = request.config.getoption("--sequence")
     if sequence != "pause-stop":
-        pytest.skip("Skipping pause-stop (sequence is pause-resume)")
+        pytest.skip(f"Skipping pause-stop (sequence is {sequence})")
     
     skip_check = request.config.getoption("--skip-connectivity-check")
     assume_yes = request.config.getoption("--yes")
@@ -191,4 +176,59 @@ def test_printer_pause_stop_cycle(hil_printer, request):
     # Execute stop
     ok, dt_ms, msg = _timed_call(hil_printer.stop)
     print(f"[HIL] stop  -> {'OK' if ok else 'FAIL'} ({dt_ms:.1f} ms) {msg}")
+    assert ok, f"stop() failed: {msg}"
+
+
+@pytest.mark.hil_printer
+def test_printer_pause_resume_pause_stop_cycle(hil_printer, request):
+    """
+    Test pause -> resume -> pause -> stop command cycle on real printer.
+
+    Verifies:
+      - pause() command executes successfully
+      - resume() command executes successfully
+      - second pause() command executes successfully
+      - stop() command executes successfully
+
+    WARNING: This **cancels** the print job. Use only in test scenarios.
+    """
+    sequence = request.config.getoption("--sequence")
+    if sequence != "pause-resume-pause-stop":
+        pytest.skip(f"Skipping pause-resume-pause-stop (sequence is {sequence})")
+
+    skip_check = request.config.getoption("--skip-connectivity-check")
+    assume_yes = request.config.getoption("--yes")
+
+    if not skip_check:
+        assert hil_printer.check_status(), "Initial connectivity check failed"
+
+    if not assume_yes:
+        response = input("Confirm active print job exists and can be paused then stopped [Y/n]: ")
+        if response.lower() in ("n", "no"):
+            pytest.skip("User declined to proceed")
+
+    # Step 1: pause
+    ok, dt_ms, msg = _timed_call(hil_printer.pause)
+    print(f"[HIL] pause  -> {'OK' if ok else 'FAIL'} ({dt_ms:.1f} ms) {msg}")
+    assert ok, f"pause() failed: {msg}"
+
+    time.sleep(1.0)
+
+    # Step 2: resume
+    ok, dt_ms, msg = _timed_call(hil_printer.resume)
+    print(f"[HIL] resume -> {'OK' if ok else 'FAIL'} ({dt_ms:.1f} ms) {msg}")
+    assert ok, f"resume() failed: {msg}"
+
+    time.sleep(1.0)
+
+    # Step 3: pause again
+    ok, dt_ms, msg = _timed_call(hil_printer.pause)
+    print(f"[HIL] pause  -> {'OK' if ok else 'FAIL'} ({dt_ms:.1f} ms) {msg}")
+    assert ok, f"second pause() failed: {msg}"
+
+    time.sleep(1.0)
+
+    # Step 4: stop
+    ok, dt_ms, msg = _timed_call(hil_printer.stop)
+    print(f"[HIL] stop   -> {'OK' if ok else 'FAIL'} ({dt_ms:.1f} ms) {msg}")
     assert ok, f"stop() failed: {msg}"

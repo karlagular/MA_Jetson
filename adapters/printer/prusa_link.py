@@ -102,11 +102,22 @@ class PrusaAdapter(PrinterPort):
                 )
                 return
 
-        print("[PrinterControl] Prusa pause failed on all known endpoints")
+        raise RuntimeError("Prusa pause failed on all known endpoints")
 
     def stop(self) -> None:
-        baseline_status = self._fetch_status_json()
-        baseline_active = self._status_indicates_active(baseline_status)
+        status = None
+        for attempt in range(1, 61):
+            status = self._fetch_status_json()
+            if self._status_indicates_active(status):
+                print(f"[PrinterControl] Prusa status check {attempt}/60: active job found — proceeding with stop")
+                break
+            print(f"[PrinterControl] Prusa status check {attempt}/60: no active job yet, waiting...")
+            time.sleep(1.0)
+        else:
+            raise RuntimeError(
+                f"Prusa stop aborted: no active job found after 60 attempts (status: {status})"
+            )
+        baseline_active = self._status_indicates_active(status)
 
         candidates = [
             ("POST", self._base_url + "/api/job", {"command": "cancel"}),
@@ -133,9 +144,22 @@ class PrusaAdapter(PrinterPort):
                 )
                 return
 
-        print("[PrinterControl] Prusa stop failed on all known endpoints")
+        raise RuntimeError("Prusa stop failed on all known endpoints")
 
     def resume(self) -> None:
+        status = None
+        for attempt in range(1, 61):
+            status = self._fetch_status_json()
+            if self._status_indicates_paused(status):
+                print(f"[PrinterControl] Prusa status check {attempt}/60: paused — proceeding with resume")
+                break
+            print(f"[PrinterControl] Prusa status check {attempt}/60: not paused yet, waiting...")
+            time.sleep(1.0)
+        else:
+            raise RuntimeError(
+                f"Prusa resume aborted: printer not paused after 60 attempts (status: {status})"
+            )
+
         candidates = [
             ("POST", self._base_url + "/api/job", {"command": "pause", "action": "resume"}),
             ("POST", self._base_url + "/api/v1/job/resume", None),
@@ -150,5 +174,7 @@ class PrusaAdapter(PrinterPort):
             if 200 <= r.status_code < 300:
                 print(f"[PrinterControl] Prusa resume: HTTP {r.status_code} via {url}")
                 return
+            body = r.text.strip().replace("\n", " ")[:200] or "<empty>"
+            print(f"[PrinterControl] Prusa resume: HTTP {r.status_code} via {url} | {body}")
 
-        print("[PrinterControl] Prusa resume failed on all known endpoints")
+        raise RuntimeError("Prusa resume failed on all known endpoints")

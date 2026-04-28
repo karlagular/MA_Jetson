@@ -28,6 +28,22 @@ from __future__ import annotations
 import pytest
 
 
+def pytest_addoption(parser):
+    """Add HIL printer/camera options to pytest."""
+    parser.addoption("--printer",
+                     choices=["Bambulab", "Prusa", "Ultimaker", "RatRig"],
+                     help="Printer to test (required for printer HIL tests)")
+    parser.addoption("--sequence", default="pause-resume",
+                     choices=["pause-resume", "pause-stop", "pause-resume-pause-stop"],
+                     help="Command sequence (default: pause-resume)")
+    parser.addoption("--machine-config", default="machine_config.json",
+                     help="Path to machine_config.json")
+    parser.addoption("--skip-connectivity-check", action="store_true",
+                     help="Skip initial connectivity check")
+    parser.addoption("--yes", action="store_true",
+                     help="Auto-confirm prompts (non-interactive)")
+
+
 def pytest_configure(config):
     """Register HIL markers."""
     config.addinivalue_line("markers", "hil_camera: marks tests as requiring real camera hardware")

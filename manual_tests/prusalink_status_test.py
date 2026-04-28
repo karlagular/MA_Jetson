@@ -7,7 +7,7 @@ import sys
 import requests
 from requests.auth import HTTPDigestAuth
 
-PRUSALINK_HOST = "10.75.100.38" #"192.168.226.67" #IPv4 Address (Info ->Network Status)
+PRUSALINK_HOST = "10.0.0.50" #"192.168.226.67" #IPv4 Address (Info ->Network Status)
 PRUSALINK_USER = "maker"
 PRUSALINK_PASSWORD = "jhv88m3BERCuWXz"
 STATUS_URL = f"http://{PRUSALINK_HOST}/api/v1/status"
