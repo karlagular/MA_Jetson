@@ -46,6 +46,7 @@ REFLE:
 *Betreuungsprotokoll
 
 URGENTE:
+*Logica de pausa y continuar y stop para test automaticos copiar de prusa integration hil (checar 60 veces que este pausado antes de continuar o detener)
 *Instrucciones para conectarse por Ethernet directo con las impresoras
 *Prusa Core One: 
 	-activar Ethernet conneciton: Settings -> Network -> Active Interface -> [ETH]
