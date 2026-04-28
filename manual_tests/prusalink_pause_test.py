@@ -7,7 +7,7 @@ import time
 import requests
 from requests.auth import HTTPDigestAuth
 
-PRUSALINK_HOST = "192.168.226.67"
+PRUSALINK_HOST = "10.75.100.38"
 PRUSALINK_USER = "maker"
 PRUSALINK_PASSWORD = "jhv88m3BERCuWXz"
 BASE_URL = f"http://{PRUSALINK_HOST}"
