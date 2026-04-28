@@ -46,6 +46,16 @@ REFLE:
 *Betreuungsprotokoll
 
 URGENTE:
+*Instrucciones para conectarse por Ethernet directo con las impresoras
+*Prusa Core One: 
+	-activar Ethernet conneciton: Settings -> Network -> Active Interface -> [ETH]
+	-activar PrusaLink: ettings -> Network -> PrusaLink 
+		*ahi mismo -> Enabled, y checar lo siguiente
+		* -> User
+		* -> Password
+		* -> IPv4 Address
+		* -> Hostname
+	-checar IPv4 Address, asegurar conexion con Jetson en la misma subred, 
 
 *probar: la safe class es la unica clase que no contara como defecto para activar una alarma
 *test que tome en cuenta la safe_class
