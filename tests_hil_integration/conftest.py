@@ -30,6 +30,30 @@ import pytest
 
 def pytest_addoption(parser):
     """Add HIL printer/camera options to pytest."""
+    parser.addoption("--camera", default="usb",
+                     choices=["basler", "usb", "rtsp"],
+                     help="Select camera backend (default: usb)")
+    parser.addoption("--model-path", default="models_available/yolo11n-seg.pt",
+                     help="Path to YOLO model (default: models_available/yolo11n-seg.pt)")
+    parser.addoption("--conf", type=float, default=0.5,
+                     help="YOLO confidence threshold (default: 0.5)")
+    parser.addoption("--max-frames", type=int, default=300,
+                     help="Max frames to process (default: 300)")
+    parser.addoption("--warmup-frames", type=int, default=5,
+                     help="Warmup frames for latency (default: 5)")
+    parser.addoption("--display", action="store_true",
+                     help="Show live overlay during test")
+    parser.addoption("--usb-device", type=int, default=0,
+                     help="USB camera device (default: 0)")
+    parser.addoption("--usb-width", type=int, default=640,
+                     help="USB camera width (default: 640)")
+    parser.addoption("--usb-height", type=int, default=480,
+                     help="USB camera height (default: 480)")
+    parser.addoption("--basler-serial", default=None,
+                     help="Basler serial number (optional)")
+    parser.addoption("--rtsp-url", default="rtsp://192.168.178.68:8554/cam",
+                     help="RTSP URL (default: rtsp://192.168.178.68:8554/cam)")
+
     parser.addoption("--printer",
                      choices=["Bambulab", "Prusa", "Ultimaker", "RatRig"],
                      help="Printer to test (required for printer HIL tests)")
@@ -42,6 +66,10 @@ def pytest_addoption(parser):
                      help="Skip initial connectivity check")
     parser.addoption("--yes", action="store_true",
                      help="Auto-confirm prompts (non-interactive)")
+    parser.addoption("--log-io", action="store_true",
+                     help="Write HIL terminal output and printer TX/RX IO to TXT logs")
+    parser.addoption("--log-dir", default="tests_hil_integration/logs",
+                     help="Directory for HIL TXT logs (default: tests_hil_integration/logs)")
 
 
 def pytest_configure(config):

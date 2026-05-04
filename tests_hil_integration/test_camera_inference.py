@@ -13,9 +13,9 @@ frame capture, inference latency measurement, and console reporting.
 Markers: @pytest.mark.hil_camera
 
 Usage:
-    pytest tests/integration/hil/test_camera_inference.py
-    pytest tests/integration/hil/test_camera_inference.py -v
-    pytest tests/integration/hil/test_camera_inference.py --camera=usb --max-frames=50
+    pytest tests_hil_integration/test_camera_inference.py
+    pytest tests_hil_integration/test_camera_inference.py -v
+    pytest tests_hil_integration/test_camera_inference.py --camera=usb --max-frames=50
 
 Command-line options (via pytest --camera, etc.):
     --camera          : Camera backend: basler, usb, or rtsp (default: usb)
@@ -57,33 +57,6 @@ def _build_rtsp_pipeline(rtsp_url: str) -> str:
         "nvvidconv ! video/x-raw,format=BGRx ! "
         "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
     )
-
-
-def pytest_addoption(parser):
-    """Add HIL-specific options to pytest."""
-    parser.addoption("--camera", default="usb",
-                     choices=["basler", "usb", "rtsp"],
-                     help="Select camera backend (default: usb)")
-    parser.addoption("--model-path", default="models_available/yolo11n-seg.pt",
-                     help="Path to YOLO model (default: models_available/yolo11n-seg.pt)")
-    parser.addoption("--conf", type=float, default=0.5,
-                     help="YOLO confidence threshold (default: 0.5)")
-    parser.addoption("--max-frames", type=int, default=300,
-                     help="Max frames to process (default: 300)")
-    parser.addoption("--warmup-frames", type=int, default=5,
-                     help="Warmup frames for latency (default: 5)")
-    parser.addoption("--display", action="store_true",
-                     help="Show live overlay during test")
-    parser.addoption("--usb-device", type=int, default=0,
-                     help="USB camera device (default: 0)")
-    parser.addoption("--usb-width", type=int, default=640,
-                     help="USB camera width (default: 640)")
-    parser.addoption("--usb-height", type=int, default=480,
-                     help="USB camera height (default: 480)")
-    parser.addoption("--basler-serial", default=None,
-                     help="Basler serial number (optional)")
-    parser.addoption("--rtsp-url", default="rtsp://192.168.178.68:8554/cam",
-                     help="RTSP URL (default: rtsp://192.168.178.68:8554/cam)")
 
 
 @pytest.fixture
@@ -173,8 +146,8 @@ def test_camera_inference(hil_camera, hil_model, request):
         max_latency = max(latencies_ms)
         
         # Reasonable inference latency bounds for embedded device
-        assert avg_latency < 5000.0, f"Average latency too high: {avg_latency:.2f}ms"
-        assert max_latency < 10000.0, f"Max latency too high: {max_latency:.2f}ms"
+        assert avg_latency < 100.0, f"Average latency too high: {avg_latency:.2f}ms"
+        assert max_latency < 500.0, f"Max latency too high: {max_latency:.2f}ms"
         
         print(f"\n[HIL][SUMMARY] Processed {frame_idx} frames, {defect_frames} with detections")
         print(f"  Inference latency (ms): avg={avg_latency:.2f}, min={min_latency:.2f}, max={max_latency:.2f}")

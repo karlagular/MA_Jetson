@@ -86,15 +86,21 @@ pytest tests_hil_integration/test_printer_pause_cycle.py \
   --printer=Prusa \
   --sequence=pause-resume \
   --machine-config=machine_config.json \
-  --yes
+  --yes \
+  --log-io
 ```
 
 **Options:**
 - `--printer`: `Bambulab`, `Prusa`, `Ultimaker`, `RatRig` (required)
-- `--sequence`: `pause-resume` or `pause-stop` (default: `pause-resume`)
+- `--sequence`: `pause-resume`, `pause-stop`, or `pause-resume-pause-stop` (default: `pause-resume`)
 - `--machine-config`: Path to credentials/endpoints JSON
 - `--skip-connectivity-check`: Skip initial printer status check
 - `--yes`: Auto-confirm safety prompts (non-interactive mode)
+- `--log-io`: Write timestamped terminal results + printer TX/RX metadata into a TXT file
+- `--log-dir`: Base directory for log output (default: `tests_hil_integration/logs`)
+
+When `--log-io` is enabled, logs are written under:
+- `tests_hil_integration/logs/<timestamp>/<test_name>.txt`
 
 ### Runtime printer flow test
 ```bash
