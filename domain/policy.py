@@ -34,9 +34,9 @@ class MofNPolicy(AlarmPolicy):
 
     def __init__(
         self,
-        m: int = 3,
-        n: int = 5,
-        disappear_frames: int = 5,
+        m: int = 10,
+        n: int = 30,
+        disappear_frames: int = 30,
     ) -> None:
         self._m = m
         self._n = n
