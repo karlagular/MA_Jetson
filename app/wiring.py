@@ -15,6 +15,7 @@ from ports.clock import ClockPort
 from ports.inference import InferencePort
 from ports.logger import EventLoggerPort
 from ports.printer import PrinterPort
+from ports.system_metrics_logger import SystemMetricsLoggerPort
 from ports.ui import UiPort
 
 
@@ -103,6 +104,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     """
     import os
     from adapters.alarm_light.dummy_light import DummyLight
+    from adapters.logging.jetson_system_metrics_logger import JetsonSystemMetricsLogger
     from adapters.logging.jsonl_logger import JsonlLogger
     from adapters.ui.qt_app import QtVideoWindow
 
@@ -116,6 +118,10 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     alarm_light: AlarmLightPort = DummyLight()
     session_dir = os.path.join("experimental_results", session_id)
     logger: EventLoggerPort = JsonlLogger(session_dir)
+    system_metrics_logger: SystemMetricsLoggerPort = JetsonSystemMetricsLogger(
+        session_dir=session_dir,
+        interval_seconds=2.0,
+    )
 
     # Domain
     policy = MofNPolicy(m=cfg.alarm_m, n=cfg.alarm_n)
@@ -147,6 +153,7 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
         alarm_runtime=alarm_runtime,
         latency_tracker=latency,
         clock=clock,
+        system_metrics_logger=system_metrics_logger,
     )
 
     # Check printer connectivity

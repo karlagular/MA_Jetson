@@ -13,6 +13,7 @@ from pipeline.steps import draw_overlay
 from ports.camera import CameraPort
 from ports.clock import ClockPort
 from ports.inference import InferencePort
+from ports.system_metrics_logger import SystemMetricsLoggerPort
 from ports.ui import UiPort
 
 
@@ -27,6 +28,7 @@ class PipelineRunner:
         alarm_runtime: AlarmRuntime,
         latency_tracker: LatencyTracker,
         clock: ClockPort,
+        system_metrics_logger: SystemMetricsLoggerPort | None = None,
         colors: List[Tuple[int, int, int]] | None = None,
     ) -> None:
         self._camera = camera
@@ -35,6 +37,8 @@ class PipelineRunner:
         self._alarm_runtime = alarm_runtime
         self._tracker = latency_tracker
         self._clock = clock
+        self._system_metrics_logger = system_metrics_logger
+        self._system_metrics_started = False
         self._colors = colors or np.random.randint(0, 255, size=(100, 3)).tolist()
         self._frame_index = 0
 
@@ -47,13 +51,18 @@ class PipelineRunner:
         if not ok or frame is None:
             return False
 
+        if self._system_metrics_logger is not None and not self._system_metrics_started:
+            self._system_metrics_logger.start()
+            self._system_metrics_started = True
+
         result = self._inference.predict(frame)
         t2 = self._clock.perf_counter()
 
         overlay = draw_overlay(frame, result, self._colors)
         t3 = self._clock.perf_counter()
 
-        packet = FramePacket(frame=frame, index=self._frame_index, timestamp_ns=int(t0 * 1e9))
+        # Use the rendered overlay so saved alarm frames include masks/boxes.
+        packet = FramePacket(frame=overlay, index=self._frame_index, timestamp_ns=int(t0 * 1e9))
         self._alarm_runtime.handle_detection(result, packet)
         self._alarm_runtime.process_pending_events()
         t4 = self._clock.perf_counter()
@@ -73,6 +82,8 @@ class PipelineRunner:
         return True
 
     def shutdown(self) -> None:
+        if self._system_metrics_logger is not None:
+            self._system_metrics_logger.stop()
         self._alarm_runtime.shutdown()
         self._tracker.stop()
         self._tracker.save_log()

@@ -106,16 +106,16 @@ class PrusaAdapter(PrinterPort):
 
     def stop(self) -> None:
         status = None
-        for attempt in range(1, 61):
+        for attempt in range(1, 31):
             status = self._fetch_status_json()
             if self._status_indicates_active(status):
-                print(f"[PrinterControl] Prusa status check {attempt}/60: active job found — proceeding with stop")
+                print(f"[PrinterControl] Prusa status check {attempt}/30: active job found — proceeding with stop")
                 break
-            print(f"[PrinterControl] Prusa status check {attempt}/60: no active job yet, waiting...")
+            print(f"[PrinterControl] Prusa status check {attempt}/30: no active job yet, waiting...")
             time.sleep(1.0)
         else:
             raise RuntimeError(
-                f"Prusa stop aborted: no active job found after 60 attempts (status: {status})"
+                f"Prusa stop aborted: no active job found after 30 attempts (status: {status})"
             )
         baseline_active = self._status_indicates_active(status)
 
@@ -148,16 +148,16 @@ class PrusaAdapter(PrinterPort):
 
     def resume(self) -> None:
         status = None
-        for attempt in range(1, 61):
+        for attempt in range(1, 31):
             status = self._fetch_status_json()
             if self._status_indicates_paused(status):
-                print(f"[PrinterControl] Prusa status check {attempt}/60: paused — proceeding with resume")
+                print(f"[PrinterControl] Prusa status check {attempt}/30: paused — proceeding with resume")
                 break
-            print(f"[PrinterControl] Prusa status check {attempt}/60: not paused yet, waiting...")
+            print(f"[PrinterControl] Prusa status check {attempt}/30: not paused yet, waiting...")
             time.sleep(1.0)
         else:
             raise RuntimeError(
-                f"Prusa resume aborted: printer not paused after 60 attempts (status: {status})"
+                f"Prusa resume aborted: printer not paused after 30 attempts (status: {status})"
             )
 
         candidates = [
