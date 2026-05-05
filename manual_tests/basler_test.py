@@ -6,6 +6,11 @@ import sys
 import time
 from pathlib import Path
 
+# To run with a live preview window:
+# python3 manual_tests/basler_test.py --display
+# Optional scaled window:
+# python3 manual_tests/basler_test.py --display-klein
+# Stop with q in the window or Ctrl+C in terminal.
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
