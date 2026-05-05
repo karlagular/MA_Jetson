@@ -11,7 +11,9 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "machine_config.json")
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "machine_config.json")
+)
 
 
 def _load_bambu_cfg() -> dict:
@@ -29,6 +31,13 @@ def _load_bambu_cfg() -> dict:
     missing = [k for k in required if not bambu.get(k) or str(bambu.get(k)).startswith("YOUR_")]
     if missing:
         raise ValueError(f"Bambulab config is missing required fields: {', '.join(missing)}")
+
+    host = str(bambu["host"]).strip()
+    if host == "0.0.0.0":
+        raise ValueError(
+            "Bambulab host is set to 0.0.0.0 in machine_config.json; set it to the printer LAN IP"
+        )
+
     return bambu
 
 
@@ -80,9 +89,9 @@ def main() -> int:
     latest_print_reason = {"value": None}
     report_event = threading.Event()
 
-    def on_connect(client, _userdata, _flags, rc):
-        if rc != 0:
-            print(f"[ERROR] MQTT connect failed with rc={rc}")
+    def on_connect(client, _userdata, _flags, reason_code, _properties=None):
+        if reason_code != 0:
+            print(f"[ERROR] MQTT connect failed with reason_code={reason_code}")
             return
         client.subscribe(report_topic)
 
@@ -105,7 +114,7 @@ def main() -> int:
                 latest_print_reason["value"] = p.get("reason")
         report_event.set()
 
-    client = mqtt.Client()
+    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.username_pw_set("bblp", access_code)
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
