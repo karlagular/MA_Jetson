@@ -9,7 +9,9 @@ import time
 import requests
 from requests.auth import HTTPDigestAuth
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "machine_config.json")
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "machine_config.json")
+)
 
 
 def _load_ultimaker_cfg() -> dict:

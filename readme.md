@@ -222,3 +222,59 @@ sudo shutdown  # Shut down the system.
 
 Remove the SD card and reboot to start using your system with the SSD.
 
+## Ultimaker S5 (Direct Ethernet) Setup
+
+If you connect the Jetson directly to an Ultimaker S5 with an Ethernet cable, make sure the Jetson can reach the printer IP shown on the Ultimaker screen.
+
+### 1) Run pairing first (required)
+
+Before pause/resume/status scripts, generate API credentials and save them to `machine_config.json`:
+
+```bash
+python3 manual_tests/ultimaker_pair_once.py
+```
+
+Approve the pairing request on the printer touchscreen.
+
+### 2) Validate the printer IP format
+
+The Ultimaker host in `machine_config.json` must be a valid IPv4 address:
+
+- Exactly 4 numeric parts separated by dots (`A.B.C.D`)
+- Each part must be in range `0` to `255`
+- Total string length is typically `7` to `15` characters
+
+Examples:
+
+- Valid: `169.254.65.74`
+- Invalid: `169.254.288.76` (288 is out of range)
+
+### 3) Temporarily set Jetson IP to match the printer network
+
+This change is runtime-only and will be lost on reboot.
+
+```bash
+# Example values (adjust to your printer IP/subnet)
+sudo ip addr add 169.254.65.1/16 dev eth0
+sudo ip route replace 169.254.0.0/16 dev eth0 metric 50
+
+# Verify routing and connectivity
+ip -br addr show dev eth0
+ip route get 169.254.65.74
+ping -I eth0 -c 2 169.254.65.74
+curl --interface eth0 -i http://169.254.65.74/api/v1/printer
+```
+
+If these checks succeed, Ultimaker manual tests can use the configured host from `machine_config.json`.
+
+### 4) Optional cleanup before reboot
+
+```bash
+sudo ip route del 169.254.0.0/16 dev eth0
+sudo ip addr del 169.254.65.1/16 dev eth0
+```
+
+## Bambu Lab X1E Network Note
+
+For a Bambu Lab X1E, the printer IP address can be set manually from the printer network settings. This allows you to match the printer IP/subnet to the Jetson network configuration when needed.
+

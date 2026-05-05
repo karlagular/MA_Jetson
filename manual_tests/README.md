@@ -47,6 +47,30 @@ python manual_tests/ultimaker_pause_test.py
 python manual_tests/bambulab_status_test.py
 ```
 
+### Ultimaker direct-Ethernet prerequisites
+
+Before running `ultimaker_*.py` scripts over a direct Ethernet cable:
+
+1. Run pairing once to create/store API credentials:
+
+```bash
+python manual_tests/ultimaker_pair_once.py
+```
+
+2. Ensure Jetson networking matches the Ultimaker subnet. For link-local setups (for example `169.254.x.x`), set a temporary IP/route on `eth0` so traffic goes to the cable interface.
+3. Verify connectivity first:
+
+```bash
+ping -I eth0 -c 2 <ultimaker_ip>
+curl --interface eth0 -i http://<ultimaker_ip>/api/v1/printer
+```
+
+See the Ultimaker setup section in the top-level README for the exact temporary `ip addr` / `ip route` commands and IPv4 format checks.
+
+### Bambu Lab X1E IP note
+
+For Bambu Lab X1E setups, the printer IP address can be set manually directly on the printer. Use this when you need the printer IP/subnet to match the Jetson network.
+
 ## Recommended Use
 
 ### For new work: Use pytest format (tests_hil_integration/)

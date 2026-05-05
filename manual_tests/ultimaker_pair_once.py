@@ -15,7 +15,9 @@ from datetime import datetime
 import requests
 
 PRINTER_IP = "169.254.221.192"
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "machine_config.json")
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "machine_config.json")
+)
 
 
 def _load_config() -> dict:
