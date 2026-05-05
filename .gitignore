@@ -5,3 +5,4 @@ push_to_github.txt
 /*.jpg
 *.py[cod]
 __pycache__/
+System_Test/logs/
