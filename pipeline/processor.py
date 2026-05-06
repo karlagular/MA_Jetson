@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+import cv2
 import numpy as np
 from app.alarm_runtime import AlarmRuntime
 
@@ -59,10 +60,17 @@ class PipelineRunner:
         t2 = self._clock.perf_counter()
 
         overlay = draw_overlay(frame, result, self._colors)
+        mask_frame = self._render_mask_frame(result, frame.shape)
         t3 = self._clock.perf_counter()
 
-        # Use the rendered overlay so saved alarm frames include masks/boxes.
-        packet = FramePacket(frame=overlay, index=self._frame_index, timestamp_ns=int(t0 * 1e9))
+        # Save overlay plus raw/mask alarm artifacts through the runtime effect path.
+        packet = FramePacket(
+            frame=overlay,
+            index=self._frame_index,
+            timestamp_ns=int(t0 * 1e9),
+            raw_frame=frame.copy(),
+            mask_frame=mask_frame,
+        )
         self._alarm_runtime.handle_detection(result, packet)
         self._alarm_runtime.process_pending_events()
         t4 = self._clock.perf_counter()
@@ -84,7 +92,24 @@ class PipelineRunner:
     def shutdown(self) -> None:
         if self._system_metrics_logger is not None:
             self._system_metrics_logger.stop()
-        self._alarm_runtime.shutdown()
+        self._alarm_runtime.shutdown(frame_count=self._frame_index)
         self._tracker.stop()
         self._tracker.save_log()
         self._camera.close()
+
+    @property
+    def frame_count(self) -> int:
+        return self._frame_index
+
+    @staticmethod
+    def _render_mask_frame(result, frame_shape: tuple[int, ...]) -> np.ndarray | None:
+        if not result.masks:
+            return None
+
+        h, w = frame_shape[:2]
+        merged = np.zeros((h, w), dtype=np.uint8)
+        for mask in result.masks:
+            if mask.shape[:2] != (h, w):
+                mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+            merged[mask.astype(bool)] = 255
+        return np.stack([merged, merged, merged], axis=-1)

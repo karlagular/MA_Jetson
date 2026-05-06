@@ -18,8 +18,10 @@ class ExperimentConfig:
     enclosure: bool = False
     vibration: bool = False
     model_path: str = "models_available/yolo11n-seg.pt"
-    alarm_m: int = 3
-    alarm_n: int = 5
+    inference_conf: float = 0.5
+    alarm_m: int = 100
+    alarm_n: int = 150
+    alarm_disappear_frames: int = 30
     rtsp_url: str = "rtsp://192.168.178.68:8554/cam"
     video_path: str = "test_video.mp4"
     safe_class_id: int = 0

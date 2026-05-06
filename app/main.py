@@ -23,6 +23,11 @@ def main() -> None:
 
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_experiment_config(cfg, f"experimental_results/{session_id}")
+    print(
+        "[Config] Active alarm policy: "
+        f"M={cfg.alarm_m} N={cfg.alarm_n} D={cfg.alarm_disappear_frames} "
+        f"Conf={cfg.inference_conf:.2f}"
+    )
 
     pipeline, ui_window, camera = wire(cfg, session_id)
 

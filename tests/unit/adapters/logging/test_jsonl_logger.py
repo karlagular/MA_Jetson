@@ -25,7 +25,7 @@ from unittest.mock import patch
 import numpy as np
 
 from adapters.logging.jsonl_logger import JsonlLogger
-from domain.models import AlarmEvent
+from domain.models import AlarmEvent, BBox
 
 
 class TestJsonlLogger:
@@ -78,3 +78,37 @@ class TestJsonlLogger:
         assert lines[0] == "frame,capture_ms,inference_ms,postprocess_ms,policy_ms,display_ms,total_ms"
         assert lines[1].startswith("1,1.100,2.200")
         assert lines[2].startswith("2,0.100,0.200")
+
+    def test_save_run_summary_persists_alarm_policy_params(self, tmp_path):
+        logger = JsonlLogger(
+            str(tmp_path),
+            alarm_m=7,
+            alarm_n=11,
+            alarm_disappear_frames=13,
+            inference_conf=0.65,
+        )
+
+        logger.save_run_summary(frame_count=42, alarms_activated=3)
+
+        summary = json.loads((tmp_path / "summary.json").read_text())
+        assert summary["frame_count"] == 42
+        assert summary["alarms_activated"] == 3
+        assert summary["alarm_m"] == 7
+        assert summary["alarm_n"] == 11
+        assert summary["alarm_disappear_frames"] == 13
+        assert summary["inference_conf"] == 0.65
+
+    def test_save_bboxes_persists_inference_output_json(self, tmp_path):
+        logger = JsonlLogger(str(tmp_path))
+        boxes = [
+            BBox(x1=10, y1=20, x2=30, y2=40, conf=0.91, cls_id=2, cls_name="blob"),
+            BBox(x1=11, y1=21, x2=31, y2=41, conf=0.55, cls_id=3, cls_name="scratch"),
+        ]
+
+        logger.save_bboxes(boxes, "alarm_boxes")
+
+        payload = json.loads((tmp_path / "alarm_boxes.json").read_text())
+        assert len(payload) == 2
+        assert payload[0]["x1"] == 10
+        assert payload[0]["conf"] == 0.91
+        assert payload[1]["cls_name"] == "scratch"

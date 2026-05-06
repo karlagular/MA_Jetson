@@ -33,6 +33,8 @@ class FramePacket:
     frame: np.ndarray
     index: int
     timestamp_ns: int
+    raw_frame: Optional[np.ndarray] = None
+    mask_frame: Optional[np.ndarray] = None
 
 
 @dataclass

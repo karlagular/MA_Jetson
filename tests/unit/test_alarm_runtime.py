@@ -49,7 +49,7 @@ from app.orchestrator import (
     TurnLightOffEffect,
     TurnLightOnEffect,
 )
-from domain.models import DetectionResult, FramePacket
+from domain.models import BBox, DetectionResult, FramePacket
 
 
 class FakePrinter:
@@ -116,6 +116,7 @@ class FakeLogger:
     def __init__(self):
         self.events = []
         self.frames = []
+        self.bboxes = []
 
     def log_alarm(self, event):
         self.events.append(event)
@@ -125,6 +126,9 @@ class FakeLogger:
 
     def save_latency_log(self, records):
         pass
+
+    def save_bboxes(self, boxes, label):
+        self.bboxes.append((boxes, label))
 
 
 class TestAlarmRuntime:
@@ -175,7 +179,11 @@ class TestAlarmRuntime:
             EnableAlarmButtonsEffect(),
             TurnLightOnEffect(),
             TurnLightOffEffect(),
-            SaveFrameEffect(frame=frame, label="lab"),
+            SaveFrameEffect(
+                frame=frame,
+                label="lab",
+                boxes=[BBox(x1=1, y1=2, x2=3, y2=4, conf=0.9, cls_id=5, cls_name="defect")],
+            ),
             LogTransitionEffect(frame_index=10, from_s="A", to_s="B", action="go"),
             PausePrinterEffect(frame_index=10),
             ResumePrinterEffect(frame_index=10),
@@ -190,6 +198,9 @@ class TestAlarmRuntime:
         assert light.off_calls == 1
         assert len(logger.frames) == 1
         assert logger.frames[0][1] == "lab"
+        assert len(logger.bboxes) == 1
+        assert logger.bboxes[0][1] == "lab_bboxes"
+        assert logger.bboxes[0][0][0].cls_name == "defect"
         assert len(logger.events) == 1
         assert logger.events[0].frame_index == 10
         assert logger.events[0].state_from == "A"

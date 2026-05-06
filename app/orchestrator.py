@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List
 
 import numpy as np
 
-from domain.models import DetectionResult, FramePacket
+from domain.models import BBox, DetectionResult, FramePacket
 from domain.state_machine import AlarmStateMachine, State
 
 if TYPE_CHECKING:
@@ -59,6 +59,9 @@ class TurnLightOffEffect(Effect):
 class SaveFrameEffect(Effect):
     frame: np.ndarray
     label: str
+    raw_frame: np.ndarray | None = None
+    mask_frame: np.ndarray | None = None
+    boxes: list[BBox] | None = None
 
 
 @dataclass
@@ -111,7 +114,13 @@ class AlarmOrchestrator:
             LogTransitionEffect(packet.index, "MONITORING", "ALARMED", "policy_triggered"),
             LogTransitionEffect(packet.index, "ALARMED", "PAUSING_PRINTER", "begin_pause"),
             TurnLightOnEffect(),
-            SaveFrameEffect(packet.frame, f"defect_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            SaveFrameEffect(
+                packet.frame,
+                f"defect_alarm_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                raw_frame=packet.raw_frame,
+                mask_frame=packet.mask_frame,
+                boxes=list(result.boxes),
+            ),
             ShowAlarmEffect(),
             PausePrinterEffect(packet.index),
         ]

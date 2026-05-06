@@ -122,7 +122,9 @@ class AlarmRuntime:
     def request_stop(self) -> None:
         self._events.put(UserStopRequested())
 
-    def shutdown(self) -> None:
+    def shutdown(self, frame_count: int | None = None) -> None:
+        if frame_count is not None:
+            self._logger.save_run_summary(frame_count=frame_count)
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def _handle_event(self, event: RuntimeEvent) -> list[Effect]:
@@ -156,6 +158,12 @@ class AlarmRuntime:
                 self._light.turn_off()
             elif isinstance(effect, SaveFrameEffect):
                 self._logger.save_frame(effect.frame, effect.label)
+                if effect.raw_frame is not None:
+                    self._logger.save_frame(effect.raw_frame, f"{effect.label}_frame")
+                if effect.mask_frame is not None:
+                    self._logger.save_frame(effect.mask_frame, f"{effect.label}_mask")
+                if effect.boxes is not None:
+                    self._logger.save_bboxes(effect.boxes, f"{effect.label}_bboxes")
             elif isinstance(effect, LogTransitionEffect):
                 self._logger.log_alarm(
                     AlarmEvent(

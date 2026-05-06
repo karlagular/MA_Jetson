@@ -40,7 +40,7 @@ class _SystemClock(ClockPort):
 
 def _make_inference(cfg: ExperimentConfig) -> InferencePort:
     from adapters.inference.ultralytics_yolo import UltralyticsYOLO
-    return UltralyticsYOLO(cfg.model_path, conf=0.5, safe_class_id=cfg.safe_class_id)
+    return UltralyticsYOLO(cfg.model_path, conf=cfg.inference_conf, safe_class_id=cfg.safe_class_id)
 
 
 def _make_camera(cfg: ExperimentConfig) -> CameraPort:
@@ -117,14 +117,24 @@ def wire(cfg: ExperimentConfig, session_id: str) -> tuple:
     printer = _make_printer(cfg.maschine, machine_configs)
     alarm_light: AlarmLightPort = DummyLight()
     session_dir = os.path.join("experimental_results", session_id)
-    logger: EventLoggerPort = JsonlLogger(session_dir)
+    logger: EventLoggerPort = JsonlLogger(
+        session_dir,
+        alarm_m=cfg.alarm_m,
+        alarm_n=cfg.alarm_n,
+        alarm_disappear_frames=cfg.alarm_disappear_frames,
+        inference_conf=cfg.inference_conf,
+    )
     system_metrics_logger: SystemMetricsLoggerPort = JetsonSystemMetricsLogger(
         session_dir=session_dir,
         interval_seconds=2.0,
     )
 
     # Domain
-    policy = MofNPolicy(m=cfg.alarm_m, n=cfg.alarm_n)
+    policy = MofNPolicy(
+        m=cfg.alarm_m,
+        n=cfg.alarm_n,
+        disappear_frames=cfg.alarm_disappear_frames,
+    )
     sm = AlarmStateMachine()
 
     # UI (must be created in Qt thread — fine, wire() is always called from main)

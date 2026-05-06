@@ -11,7 +11,7 @@ from PyQt5.QtCore import QMetaObject, QTimer, Qt, Q_ARG, pyqtSlot
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel,
-    QMainWindow, QPushButton, QVBoxLayout, QWidget,
+    QDoubleSpinBox, QMainWindow, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from app.config import ExperimentConfig
@@ -88,6 +88,34 @@ class ExperimentConfigDialog(QDialog):
             self.model_combo.addItem(Path(path).name, userData=path)
 
         self.safe_class_combo = QComboBox()
+        self.inference_conf_spin = QDoubleSpinBox()
+        self.inference_conf_spin.setRange(0.0, 1.0)
+        self.inference_conf_spin.setSingleStep(0.01)
+        self.inference_conf_spin.setDecimals(2)
+
+        defaults = ExperimentConfig()
+        self.inference_conf_spin.setValue(defaults.inference_conf)
+        self.alarm_m_spin = QSpinBox()
+        self.alarm_m_spin.setRange(1, 100000)
+        self.alarm_m_spin.setValue(defaults.alarm_m)
+
+        self.alarm_n_spin = QSpinBox()
+        self.alarm_n_spin.setRange(1, 100000)
+        self.alarm_n_spin.setValue(defaults.alarm_n)
+
+        self.alarm_mn_widget = QWidget()
+        alarm_mn_layout = QHBoxLayout()
+        alarm_mn_layout.setContentsMargins(0, 0, 0, 0)
+        alarm_mn_layout.setSpacing(8)
+        alarm_mn_layout.addWidget(QLabel("M"))
+        alarm_mn_layout.addWidget(self.alarm_m_spin)
+        alarm_mn_layout.addWidget(QLabel("N"))
+        alarm_mn_layout.addWidget(self.alarm_n_spin)
+        self.alarm_mn_widget.setLayout(alarm_mn_layout)
+
+        self.alarm_disappear_spin = QSpinBox()
+        self.alarm_disappear_spin.setRange(1, 100000)
+        self.alarm_disappear_spin.setValue(defaults.alarm_disappear_frames)
 
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -100,7 +128,10 @@ class ExperimentConfigDialog(QDialog):
             ("Z-Achse:",     self.zachse_combo),
             ("Maschine:",    self.maschine_combo),
             ("Modell:",      self.model_combo),
+            ("Confidence:",  self.inference_conf_spin),
             ("Safe class:",  self.safe_class_combo),
+            ("Alarm M/N:",   self.alarm_mn_widget),
+            ("Disappear D:", self.alarm_disappear_spin),
         ]):
             lbl = QLabel(label_text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -135,10 +166,14 @@ class ExperimentConfigDialog(QDialog):
             z_achse=self.zachse_combo.currentText(),
             maschine=self.maschine_combo.currentText(),
             model_path=self.model_combo.currentData(),
+            inference_conf=self.inference_conf_spin.value(),
             lighting=self.lighting_cb.isChecked(),
             enclosure=self.enclosure_cb.isChecked(),
             vibration=self.vibration_cb.isChecked(),
             safe_class_id=self.safe_class_combo.currentData() or 0,
+            alarm_m=self.alarm_m_spin.value(),
+            alarm_n=self.alarm_n_spin.value(),
+            alarm_disappear_frames=self.alarm_disappear_spin.value(),
         )
 
     def _on_model_changed(self) -> None:
