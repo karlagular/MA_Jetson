@@ -17,12 +17,12 @@ class ExperimentConfig:
     lighting: bool = False
     enclosure: bool = False
     vibration: bool = False
-    model_path: str = "models_available/yolo11n-seg.pt"
-    inference_conf: float = 0.5
-    alarm_m: int = 100
-    alarm_n: int = 150
-    alarm_disappear_frames: int = 30
-    rtsp_url: str = "rtsp://192.168.178.68:8554/cam"
+    model_path: str = "models_available/best.pt"
+    inference_conf: float = 0.8
+    alarm_m: int = 70
+    alarm_n: int = 100
+    alarm_disappear_frames: int = 35
+    rtsp_url: str = "rtsp://10.0.0.5:8554/cam"
     video_path: str = "test_video.mp4"
     safe_class_id: int = 0
 

@@ -12,11 +12,12 @@ Usage:
   pytest -s System_Test/test_alarm_count_fake_printer.py::test_alarm_count_with_fake_printer
 
 Optional camera/model arguments:
-  --system-camera basler|usb|replay
+    --system-camera basler|usb|rtsp|replay
   --system-basler-serial SERIAL
   --system-usb-device 0
   --system-usb-width 640
   --system-usb-height 480
+    --system-rtsp-url rtsp://10.0.0.5:8554/cam
   --system-video-path /path/to/video.mp4
     --system-model-path models_available/best.pt
   --system-conf 0.5
@@ -53,6 +54,7 @@ from adapters.alarm_light.dummy_light import DummyLight
 from adapters.camera.basler_pypylon import BaslerPylonCamera
 from adapters.camera.opencv_usb import OpenCVUSBCamera
 from adapters.camera.replay_video import ReplayVideoCamera
+from adapters.camera.rtsp_gstreamer import RTSPGStreamerCamera
 from adapters.inference.ultralytics_yolo import UltralyticsYOLO
 from adapters.logging.jetson_system_metrics_logger import JetsonSystemMetricsLogger
 from adapters.logging.jsonl_logger import JsonlLogger
@@ -135,6 +137,15 @@ def _make_camera(request):
             width=request.config.getoption("--system-usb-width"),
             height=request.config.getoption("--system-usb-height"),
         )
+    if camera_type == "rtsp":
+        rtsp_url = request.config.getoption("--system-rtsp-url")
+        pipeline = (
+            f"rtspsrc location={rtsp_url} latency=200 ! "
+            "rtph264depay ! h264parse ! nvv4l2decoder ! "
+            "nvvidconv ! video/x-raw,format=BGRx ! "
+            "videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
+        )
+        return RTSPGStreamerCamera(pipeline)
 
     video_path = request.config.getoption("--system-video-path")
     if not video_path:

@@ -11,7 +11,7 @@ from PyQt5.QtCore import QMetaObject, QTimer, Qt, Q_ARG, pyqtSlot
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel,
-    QDoubleSpinBox, QMainWindow, QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QDoubleSpinBox, QLineEdit, QMainWindow, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from app.config import ExperimentConfig
@@ -94,7 +94,13 @@ class ExperimentConfigDialog(QDialog):
         self.inference_conf_spin.setDecimals(2)
 
         defaults = ExperimentConfig()
+        default_model_index = self.model_combo.findData(defaults.model_path)
+        if default_model_index >= 0:
+            self.model_combo.setCurrentIndex(default_model_index)
         self.inference_conf_spin.setValue(defaults.inference_conf)
+        self.rtsp_url_edit = QLineEdit()
+        self.rtsp_url_edit.setPlaceholderText("rtsp://host:port/path")
+        self.rtsp_url_edit.setText(defaults.rtsp_url)
         self.alarm_m_spin = QSpinBox()
         self.alarm_m_spin.setRange(1, 100000)
         self.alarm_m_spin.setValue(defaults.alarm_m)
@@ -117,30 +123,46 @@ class ExperimentConfigDialog(QDialog):
         self.alarm_disappear_spin.setRange(1, 100000)
         self.alarm_disappear_spin.setValue(defaults.alarm_disappear_frames)
 
+        self.disappear_conf_widget = QWidget()
+        disappear_conf_layout = QHBoxLayout()
+        disappear_conf_layout.setContentsMargins(0, 0, 0, 0)
+        disappear_conf_layout.setSpacing(8)
+        disappear_conf_layout.addWidget(QLabel("D"))
+        disappear_conf_layout.addWidget(self.alarm_disappear_spin)
+        disappear_conf_layout.addWidget(QLabel("Conf"))
+        disappear_conf_layout.addWidget(self.inference_conf_spin)
+        self.disappear_conf_widget.setLayout(disappear_conf_layout)
+
         grid = QGridLayout()
         grid.setSpacing(10)
         grid.setColumnMinimumWidth(0, 110)
         grid.setColumnStretch(1, 1)
 
-        for i, (label_text, widget) in enumerate([
+        rows = [
             ("Videostream:", self.videostream_combo),
+            ("RTSP URL:",    self.rtsp_url_edit),
             ("Kamera:",      self.kamera_combo),
             ("Z-Achse:",     self.zachse_combo),
             ("Maschine:",    self.maschine_combo),
             ("Modell:",      self.model_combo),
-            ("Confidence:",  self.inference_conf_spin),
             ("Safe class:",  self.safe_class_combo),
             ("Alarm M/N:",   self.alarm_mn_widget),
-            ("Disappear D:", self.alarm_disappear_spin),
-        ]):
+            ("Disappear/Conf:", self.disappear_conf_widget),
+        ]
+
+        self._form_labels = {}
+        for i, (label_text, widget) in enumerate(rows):
             lbl = QLabel(label_text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             grid.addWidget(lbl, i, 0)
             grid.addWidget(widget, i, 1)
+            self._form_labels[label_text] = lbl
         outer.addLayout(grid)
 
         self.model_combo.currentIndexChanged.connect(self._on_model_changed)
+        self.videostream_combo.currentTextChanged.connect(self._on_videostream_changed)
         self._on_model_changed()
+        self._on_videostream_changed(self.videostream_combo.currentText())
 
         self.lighting_cb  = QCheckBox("Lighting")
         self.enclosure_cb = QCheckBox("Enclosure")
@@ -162,6 +184,7 @@ class ExperimentConfigDialog(QDialog):
     def get_config(self) -> ExperimentConfig:
         return ExperimentConfig(
             videostream=self.videostream_combo.currentText(),
+            rtsp_url=self.rtsp_url_edit.text().strip() or ExperimentConfig().rtsp_url,
             kamera=self.kamera_combo.currentText(),
             z_achse=self.zachse_combo.currentText(),
             maschine=self.maschine_combo.currentText(),
@@ -175,6 +198,11 @@ class ExperimentConfigDialog(QDialog):
             alarm_n=self.alarm_n_spin.value(),
             alarm_disappear_frames=self.alarm_disappear_spin.value(),
         )
+
+    def _on_videostream_changed(self, stream: str) -> None:
+        show_rtsp = stream == "RTSP"
+        self.rtsp_url_edit.setVisible(show_rtsp)
+        self._form_labels["RTSP URL:"].setVisible(show_rtsp)
 
     def _on_model_changed(self) -> None:
         path = self.model_combo.currentData()

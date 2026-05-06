@@ -5,7 +5,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--system-camera",
         default="basler",
-        choices=["basler", "usb", "replay"],
+        choices=["basler", "usb", "rtsp", "replay"],
         help="Camera backend for system test (default: basler)",
     )
     parser.addoption(
@@ -16,6 +16,11 @@ def pytest_addoption(parser):
     parser.addoption("--system-usb-device", type=int, default=0, help="USB camera device id")
     parser.addoption("--system-usb-width", type=int, default=640, help="USB camera frame width")
     parser.addoption("--system-usb-height", type=int, default=480, help="USB camera frame height")
+    parser.addoption(
+        "--system-rtsp-url",
+        default="rtsp://10.0.0.5:8554/cam",
+        help="RTSP URL when --system-camera=rtsp",
+    )
     parser.addoption(
         "--system-video-path",
         default="",
